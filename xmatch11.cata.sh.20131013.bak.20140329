@@ -1,0 +1,772 @@
+#!/bin/bash
+#Author: xlp at 20130101
+#Version: V1.0
+#function: to match the newimage to the refcom.fit with xyxymatch
+#input newimage 
+#output *tempxyOT *skyOT
+#This codes includes the catalog match and image subtraction
+#image match is only done with 1 times.
+# modified by xlp at 20130110
+#update the codes about the flux match for subimage
+#update the codes about the FWHM calculation for xFhmwCal.sh
+# modifed by xlp at 20130113
+#rm -rf listsky*
+DIR_data=`pwd`
+sub_dir=/data/workspace/redufile/subfile/
+lc_dir=/data/workspace/redufile/getlc
+trimsubimage_dir=/data/workspace/redufile/trimsubimage
+Alltemplatetable=refcom3d.cat
+tempfile=refcom.fit
+tempmatchstars_mag=GwacStandall_mag.cat
+tempsubbgfile=refcom_subbg.fit
+Accfile=refcom.acc
+CCDsize=3056
+ejmin=10
+ejmax=`echo $CCDsize | awk '{print($1-ejmin)}' ejmin=$ejmin` 
+crossRedius=3.0
+diffmag=2.0
+darkname=Dark.fit
+flatname=Flat_bg.fit
+dir_basicimage=/data/workspace/basicfile
+pixelscale=29 #arcsec
+
+#Nf=0
+#rm -rf matchchb.log matchchb_all.log
+#rm -rf list2frame.list list_fin listnewskyot.list listOT listsky listsky1 listskyotfile listskyotfileHis listskyot.list listtemp listtime 
+#rm -rf noupdate.flag listupdateimage.list listupdate_last5 listupdate crossoutput_skytemp
+./xmknewfile.sh  # build a new directory for results
+#========================================================================
+for FILE in `cat listmatch`
+do
+	date >time_redu_f
+	FITFILE=$FILE
+	ls $FITFILE >>listmatch.old
+	echo `date +%s` >>listmatch.old
+	allfile=`echo $FITFILE | sed 's/\.fit/.fit.*/'`
+	otc2=`echo $FITFILE | sed 's/\.fit/.fit.otc2/'`
+	FITFILE_subbg=`echo $FITFILE | sed 's/\.fit/.subbg.fit./'`
+	OUTPUT=`echo $FITFILE | sed 's/\.fit/.fit.sex/'`	# output of SourceExtractor
+	OUTPUT_ini=`echo $FITFILE | sed 's/\.fit/.fit.sexini/'`
+	OUTPUT_new=`echo $FITFILE | sed 's/\.fit/.fit.sexnew/'`	# Catalog for the bright source. Output from $OUTPUT. Input for the xyxymatch
+	OUTPUT_newfirst=`echo $FITFILE | sed 's/\.fit/.fit.sexnewfirst/'`
+	imagetmp1sd=`echo $FITFILE | sed 's/\.fit/.fit.mattmp1sd/'`
+	imagetmp2sd=`echo $FITFILE | sed 's/\.fit/.fit.mattmp2sd/'`	# output of the xyxymatch, input for geomap	
+	imagetmp3sd=`echo $FITFILE | sed 's/\.fit/.fit.mattmp3sd/'`
+	imagetrans1sd=`echo $FITFILE | sed 's/\.fit/.fit.trans1sd/'`
+	imagetrans2sd=`echo $FITFILE | sed 's/\.fit/.fit.trans2sd/'`	# output of the geomap,
+	 imagetrans3sd=`echo $FITFILE | sed 's/\.fit/.fit.trans3sd/'`
+	inprefix=`echo $FITFILE | sed 's/\.fit//'`			# inprefix of the fit. it was used in the iraf.geomap and iraf.geoxytran
+	crossoutput_xy=`echo $FITFILE | sed 's/\.fit/.fit.tempxyOT/'`	# Output of the Crossmatch in the temp frame. This code is writed by CHB. It is also the input for cctran.
+	crossoutput_mag=`echo $FITFILE | sed 's/\.fit/.fit.tempMagOT/'`
+
+	crossoutput_sky=`echo $FITFILE | sed 's/\.fit/.fit.skyOT/'`	# Output of the iraf.cctran. The input for this process is $crossoutput_xy. Catalog in which RA DEC are included, 
+	newimageOTxyFis=`echo $FITFILE | sed 's/\.fit/.fit.newxyOT1/'`  # Output of the iraf.geoxytran. The input for this process is $crossoutput_xy. Catalog in which xc,yc are includec in the new image frame.
+	OUTPUT_fwhm=`echo $FITFILE | sed 's/\.fit/.fit.fwhm/'`			# Output of the FWHM caculation code xFwhmCal_single.sh. 
+	bg=`echo $FITFILE | sed 's/\.fit/.bg.fit/'`				# Output of the SourceExtractor. Background image for the new image. 
+	sample_firstTriangle=`echo $FITFILE | sed 's/\.fit/.fit.TriSam1sd.cat/'`
+        sample_secTriangle=`echo $FITFILE | sed 's/\.fit/.fit.TriSam2sd.cat/'`
+        sample_firstTolere=`echo $FITFILE | sed 's/\.fit/.fit.TolSam1sd.cat/'`
+        refnew_xyflux=`echo $FITFILE | sed 's/\.fit/.fit.refnew_xyflux.cat/'`
+        CoordDiff_table=`echo $FITFILE | sed 's/\.fit/.fit.coordiff.cat/'`
+        OUTPUT_geoxytran1=`echo $FITFILE | sed 's/\.fit/.fit.tran1/'`
+	OUTPUT_geoxytran2=`echo $FITFILE | sed 's/\.fit/.fit.tran2/'`	# Catalog in the temp frame relatively to the $OUTPUT. Output for the geoxytran 
+        OUTPUT_geoxytran3=`echo $FITFILE | sed 's/\.fit/.fit.tran3/'`
+        newimageStandxyFis=`echo $FITFILE | sed 's/\.fit/.fit.newStandxy1/'`
+        newimageStandxySecond=`echo $FITFILE | sed 's/\.fit/.fit.newStandxy2/'`
+        newimageOTxySecond=`echo $FITFILE | sed 's/\.fit/.fit.newxyOT2/'`
+	newimageOTxyThird=`echo $FITFILE | sed 's/\.fit/.fit.newxyOT3/'`
+
+	echo $FITFILE 
+#add the keywords jd in the fit header
+#	dateobs=`gethead $FITFILE "DATE-OBS" | sed 's/T/ /' | awk '{print($1)}'`
+#        timeobs=`gethead $FITFILE "DATE-OBS" | sed 's/T/ /' | awk '{print($2)}'`
+#	dateobs=`gethead $FITFILE "D-OBS-UT" | awk '{print($1)}'
+#	timeobs=`gethead $FITFILE "T-OBS-UT" | awk '{print($1)}'`
+	ID_MountCamara=`gethead $FITFILE "IMAGEID"  | cut -c14-17`
+	ra1=`gethead $FITFILE "RA"`
+	dec1=`gethead $FITFILE "DEC" `
+	ra_mount=`skycoor -d $ra1 $dec1 | awk '{print($1)}'`
+	dec_mount=`skycoor -d $ra1 $dec1 | awk '{print($2)}'`
+	
+	echo $ID_MountCamara $ra1 $dec1 $ra_mount $dec_mount
+
+#	sethead -kr X DATE-OBS=$dateobs ut=$timeobs $FITFILE
+	delhead $FITFILE "OBSERVAT" "LATITUDE" "LONGITUD"
+        cd $HOME/iraf
+        cp -f login.cl.old login.cl
+        echo noao >> login.cl
+        echo astutil >> login.cl
+        echo "cd $DIR_data" >> login.cl
+        echo "setjd(\"$FITFILE\", date=\"D-OBS-UT\",time=\"T-OBS-UT\")" >>login.cl
+        echo logout >> login.cl
+        cl < login.cl >xlogfile
+#	cl < login.cl
+        cd $HOME/iraf
+        cp -f login.cl.old login.cl
+        cd $DIR_data
+#======================================================
+	if [ ! -r $darkname ] 
+	then
+		if [  -r $dir_basicimage/$darkname ]	
+		then
+			cp $dir_basicimage/$darkname $DIR_data
+			cp $dir_basicimage/badpixelFile.db $DIR_data
+			xdarkcorr.sh $FITFILE $darkname
+		fi
+	else
+		xdarkcorr.sh $FITFILE $darkname
+	fi
+	if [ ! -r $flatname ]
+	then
+		if [  -r $dir_basicimage/$flatname ]
+		then
+			cp $dir_basicimage/$flatname $DIR_data
+			xflatcorr.sh $FITFILE $flatname
+		fi
+	else
+		xflatcorr.sh $FITFILE $flatname
+	fi
+
+#	./xdarkcorr.sh $FITFILE $darkname                     #only doing the dark correction
+#	./xdarkflatcoor.sh $FITFILE $darkname $flatname       #do the dark and flat correction simultaneously.
+#======================================================
+#	To get the source from the image by Source Extractor "sex"
+	rm -rf $allfile
+	ls $allfile 
+	sex $FITFILE  -c  xmatchdaofind.sex -DETECT_THRESH 1.5 -ANALYSIS_THRESH 1.5 -CATALOG_NAME $OUTPUT_ini -CHECKIMAGE_TYPE BACKGROUND -CHECKIMAGE_NAME $bg 
+#=========================================================================
+#	echo `date` "1sh match obj extracted"
+        xNpixel=`gethead $FITFILE "NAXIS1"`
+        yNpixel=`gethead $FITFILE "NAXIS2"`		
+#=========================================================	
+#modified by xlp at 20140326
+#get the initial shift from the last newshift named by newxyshift.cat 
+#for the image coordinates 
+	if test -s newxyshift.cat
+	then
+		echo "have newxyshift.cat"
+		cat newxyshift.cat >>allxyshit.cat
+		xshift0=`cat newxyshift.cat | awk '{print($1)}'`
+		yshift0=`cat newxyshift.cat | awk '{print($2)}'`
+		echo $xshift0 $yshift0
+		toleranceradius=10
+	else
+		echo "No newxyshift.cat"
+		echo 0 0 >newxyshift.cat
+		xshift0=0
+		yshift0=0
+		toleranceradius=30
+	fi
+#	cat $OUTPUT_ini | awk '{if(($1-xshift0)>0 && ($1-xshift0)<3056 && ($2-yshift0)>0 && ($2-yshift0)<3056)print($1-xshift0,$2-yshift0,$3,$4,$5,$6,$7,$8,$9,$10)}' xshift0=$xshift0 yshift0=$yshift0  | sort -n -k 7 | head -2000 | awk '{print($1,$2,$3)}' > $OUTPUT_newfirst
+	cat $OUTPUT_ini | awk '{if(($1-xshift0)>0 && ($1-xshift0)<3056 && ($2-yshift0)>0 && ($2-yshift0)<3056)print($1-xshift0,$2-yshift0,$3,$4,$5,$6,$7,$8,$9,$10)}' xshift0=$xshift0 yshift0=$yshift0 > $OUTPUT
+	cat $OUTPUT | sort -n -k 7 | head -1000 | awk '{print($1,$2,$3)}' > $OUTPUT_newfirst
+	wc $OUTPUT_newfirst
+	
+#========================================================
+#	echo `date` "The first tolerance match will be going on"
+        matchflag=tolerance
+        fitorder=6
+	tempmatchstars=GwacStandall.cat
+
+#=======================================================
+	echo `date` "First tolerance match"
+        cd $HOME/iraf
+        cp -f login.cl.old login.cl
+        echo noao >> login.cl
+        echo image >> login.cl
+        echo "cd $DIR_data" >> login.cl
+        echo "xyxymatch(\"$OUTPUT_newfirst\",\"$tempmatchstars\", \"$imagetmp3sd\",toleranc=$toleranceradius, xcolumn=1,ycolumn=2,xrcolum=1,yrcolum=2,separation=7, matchin=\"$matchflag\", inter-,verbo-) " >>login.cl
+        echo "geomap(\"$imagetmp3sd\", \"$imagetrans3sd\", transfo=\"$inprefix\", verbos-, xmin=1, xmax=$xNpixel, ymin=1, ymax=$yNpixel,fitgeom=\"general\", functio=\"polynomial\",xxorder=$fitorder,xyorder=$fitorder,xxterms=\"half\",yxorder=$fitorder,yyorder=$fitorder,yxterms=\"half\", maxiter=5,reject=2.5,inter-)" >>login.cl
+        echo logout >> login.cl
+        cl < login.cl >xlogfile
+        cd $HOME/iraf
+        cp -f login.cl.old login.cl
+        cd $DIR_data
+        
+	if test -r $imagetrans3sd
+        then
+		echo "First xyxymatch with tolerance is finished!"
+		xrms=`cat $imagetrans3sd | grep "xrms"  | awk '{print($2)}'`
+		yrms=`cat $imagetrans3sd | grep "yrms"  | awk '{print($2)}'`
+		echo `cat $imagetrans3sd | grep "shift"`
+		echo $xrms $yrms
+#============================
+	#	to check wether the match is good enough or not by rms at X-axis and Y-axis.
+		if [ ` echo " $xrms > 0.15 " | bc ` -eq 1 ] || [ ` echo " $yrms > 0.15 " | bc ` -eq 1 ] # if not good enough
+		then
+			echo "xrms or yrms is not good enough for the first tolerance match"
+			rm -rf $imagetrans3sd
+			cat $OUTPUT | awk '{if(($3-$5)/$6>20) print($1,$2,$3,$4,$5,$6,$7)}' | column -t >allres0
+		        matchflag=triangles
+		        Nbstar=10 #set 10*10 regions to extract the bright stars to match each other
+		        Ng=2
+		        fitorder=2
+		        tempmatchstars=refcom1d.cat
+		        xNb=`echo $xNpixel $Nbstar | awk '{print(int($1/$2))}'`
+		        yNb=`echo $yNpixel $Nbstar | awk '{print(int($1/$2))}'`
+		        for((i=$Ng;i<($Nbstar-$Ng);i++))
+		        do
+		                for((j=$Ng;j<($Nbstar-$Ng);j++))
+		                do
+#		                        cat allres0 | awk '{if( (xnb*i)<$1 && $1<=(xnb*(i+1))  &&    (ynb*j)<$2 && $2<=(ynb*(j+1))) print($1,$2,$3)}' i=$i j=$j xnb=$xNb ynb=$yNb | sort -n -r -k 3 | head -5 | column -t >Res$i$j
+                                       cat allres0 | awk '{if( (xnb*i)<$1 && $1<=(xnb*(i+1))  &&    (ynb*j)<$2 && $2<=(ynb*(j+1))) print($1,$2,$3)}' i=$i j=$j xnb=$xNb ynb=$yNb | sort -n -r -k 3 | head -5 | column -t >>$OUTPUT_new
+		                done
+		        done
+		
+#		        cat Res* >$OUTPUT_new
+#		        cp  $OUTPUT_new $sample_firstTriangle
+#			rm -rf Res* mattmp
+		        cd $HOME/iraf
+		        cp -f login.cl.old login.cl
+		        echo noao >> login.cl
+		        echo image >>login.cl
+		        echo "cd $DIR_data" >> login.cl
+#		        echo $OUTPUT_new $tempmatchstars
+		        echo "xyxymatch(\"$OUTPUT_new\",\"$tempmatchstars\", \"$imagetmp1sd\",toleranc=40, xcolumn=1,ycolumn=2,xrcolum=1,yrcolum=2,separation=7, matchin=\"$matchflag\", inter-,verbo-) " >>login.cl
+		        echo "geomap(\"$imagetmp1sd\", \"$imagetrans1sd\", transfo=\"$inprefix\", verbos-, xmin=1, xmax=$xNpixel, ymin=1, ymax=$xNpixel,fitgeom=\"general\", functio=\"polynomial\",xxorder=$fitorder,xyorder=$fitorder,xxterms=\"half\",yxorder=$fitorder,yyorder=$fitorder,yxterms=\"half\", inter-)" >>login.cl
+		        echo "geoxytran(\"$OUTPUT\", \"$OUTPUT_geoxytran1\",\"$imagetrans1sd\", transfo=\"$inprefix\",geometr=\"geometric\",directi=\"backward\",xcolumn=1,ycolumn=2,calctyp=\"double\",min_sig=7)" >>login.cl
+		        echo logout >> login.cl
+		        cl < login.cl >xlogfile
+		        cd $HOME/iraf
+		        cp -f login.cl.old login.cl
+		        cd $DIR_data
+#		        mv mattmp $imagetmp1sd
+#		        mv transform.db $imagetrans1sd
+			echo "for imagetrans1sd,rms:"
+			cat $imagetrans1sd | grep "rms" | awk '{print($2)}' 
+
+			rm -rf $OUTPUT_new
+		        cat $OUTPUT_geoxytran1 | awk '{if(($3-$5)/$6>20) print($1,$2,$3,$4,$5,$6,$7)}' | column -t >allres0
+		        xNb=`echo $xNpixel $Nbstar | awk '{print(int($1/$2))}'`
+		        yNb=`echo $yNpixel $Nbstar | awk '{print(int($1/$2))}'`
+		        for((i=$Ng;i<($Nbstar-$Ng);i++))
+		        do
+		                for((j=$Ng;j<($Nbstar-$Ng);j++))
+		                do
+		                        cat allres0 | awk '{if( (xnb*i)<$1 && $1<=(xnb*(i+1))  &&    (ynb*j)<$2 && $2<=(ynb*(j+1))) print($1,$2,$3)}' i=$i j=$j xnb=$xNb ynb=$yNb | sort -n -r -k 3 | head -3 | column -t >>$OUTPUT_new #Res$i$j
+		                done
+		        done
+		
+		#        cat Res* >$OUTPUT_new
+		#        cp $OUTPUT_new $sample_secTriangle
+		#        rm -rf Res* mattmp
+		
+		        cd $HOME/iraf
+		        cp -f login.cl.old login.cl
+		        echo noao >> login.cl
+		        echo image >>login.cl
+		        echo "cd $DIR_data" >> login.cl
+		     #   echo $OUTPUT_new $tempmatchstars
+		        echo "xyxymatch(\"$OUTPUT_new\",\"$tempmatchstars\", \"$imagetmp2sd\",toleranc=15, xcolumn=1,ycolumn=2,xrcolum=1,yrcolum=2,separation=5, matchin=\"$matchflag\", inter-,verbo-) " >>login.cl
+		        echo "geomap(\"$imagetmp2sd\", \"$imagetrans2sd\", transfo=\"$inprefix\", verbos-, xmin=1, xmax=$xNpixel, ymin=1, ymax=$xNpixel,fitgeom=\"general\", functio=\"polynomial\",xxorder=$fitorder,xyorder=$fitorder,xxterms=\"half\",yxorder=$fitorder,yyorder=$fitorder,yxterms=\"half\", inter-)" >>login.cl
+		        echo "geoxytran(\"$OUTPUT_geoxytran1\", \"$OUTPUT_geoxytran2\",\"$imagetrans2sd\", transfo=\"$inprefix\",geometr=\"geometric\",directi=\"backward\",xcolumn=1,ycolumn=2,calctyp=\"double\",min_sig=7)" >>login.cl
+		        echo logout >> login.cl
+		        cl < login.cl >xlogfile
+		        cd $HOME/iraf
+		        cp -f login.cl.old login.cl
+		        cd $DIR_data
+		        #mv mattmp $imagetmp2sd
+		        #mv transform.db $imagetrans2sd
+
+#====================================================
+			rm -rf nexyshift.cat
+#			cat $imagetrans1sd | grep "shift" | awk '{print($2)}' |  tr '\n' '  ' > newxyshift.cat
+#			cat $imagetrans2sd | grep "shift" | awk '{print($2)}' |  tr '\n' '  ' >> newxyshift.cat
+			cat $imagetrans1sd $imagetrans2sd | grep "shift" | awk '{print($2)}' |  tr '\n' ' ' | awk '{print($1+$3+xshift0,$2+$4+yshift0)}' xshift0=$xshift0 yshift0=$yshift0 >newxyshift.cat
+		       # echo >> newxyshift.cat
+		        echo "The whole shift including shift0 shiftTr shiftSec in xy is"
+		        cat newxyshift.cat
+			echo "for imagetrans2sd"
+			cat $imagetrans2sd | grep "rms" | awk '{print($2)}'  | tr '\n' ' '
+#==========================================================				
+			cat $OUTPUT_geoxytran2 | awk '{print($1,$2,$3)}' | sort -n -k 7 | head -1000  > $OUTPUT_new	
+			echo `date` " Tolerance Third again"
+			rm -rf mattmp1 transform1.db
+			matchflag=tolerance
+		        fitorder=6
+		        tempmatchstars=GwacStandall.cat
+		
+		        cd $HOME/iraf
+	        	cp -f login.cl.old login.cl
+		        echo noao >> login.cl
+		        echo image >> login.cl
+		        echo "cd $DIR_data" >> login.cl
+		        echo "xyxymatch(\"$OUTPUT_new\",\"$tempmatchstars\", \"$imagetmp3sd\",toleranc=3, xcolumn=1,ycolumn=2,xrcolum=1,yrcolum=2,separation=10, matchin=\"$matchflag\", inter-,verbo-) " >>login.cl
+		        echo "geomap(\"$imagetmp3sd\", \"$imagetrans3sd\", transfo=\"$inprefix\", verbos-, xmin=1, xmax=$xNpixel, ymin=1, ymax=$yNpixel,fitgeom=\"general\", functio=\"polynomial\",xxorder=$fitorder,xyorder=$fitorder,xxterms=\"half\",yxorder=$fitorder,yyorder=$fitorder,yxterms=\"half\", maxiter=5,reject=3,inter-)" >>login.cl
+			echo "geoxytran(\"$OUTPUT_geoxytran2\", \"$OUTPUT_geoxytran3\",\"$imagetrans3sd\", transfo=\"$inprefix\",geometr=\"geometric\",directi=\"backward\",xcolumn=1,ycolumn=2,calctyp=\"double\",min_sig=7)" >>login.cl	
+		        echo logout >> login.cl
+		        cl < login.cl >xlogfile 
+			cd $HOME/iraf
+		        cp -f login.cl.old login.cl
+		        cd $DIR_data
+		        echo " Tolerance match again finished"
+#			mv mattmp1 $imagetmp2sd
+# to rebuild a file for $imagetrans2sd, the information in which incouds rms and shift for this image relative to the temp file.
+		#	sed -n '1,15p' $imagetmp3sd >$imagetmp2sd
+		#	sed -n '16,1000p' $imagetmp3sd | awk '{print($1,$2,$3+xshift,$4+yshift,$5,$6)}' xshift=$xshift yshift=$yshift >>$imagetmp2sd
+#There are some problems for the premeters $xshift $yshift
+#================================================================
+		##	rm -rf mattmp1
+			if test -s $imagetrans3sd
+			then
+				echo "for tolerance imagetrans3sd,rms:"
+		   		cat $imagetrans3sd | grep "rms" | awk '{print($2)}' 
+		                xrms=`cat $imagetrans3sd | grep "xrms"  | awk '{print($2)}'`
+                                yrms=`cat $imagetrans3sd | grep "yrms"  | awk '{print($2)}'`
+
+				if [ ` echo " $xrms < 0.15 " | bc ` -eq 1 ] && [ ` echo " $yrms < 0.15 " | bc ` -eq 1 ]
+				then	
+					echo "image match successful"
+					xshift3=`cat $imagetrans3sd | grep "xshift" | awk '{print($2)}'`
+	                                yshift3=`cat $imagetrans3sd | grep "yshift" | awk '{print($2)}'`
+        	                        cat newxyshift.cat | awk '{print($1+xshift3,$2+yshift3)}' xshift3=$xshift3 yshift3=$yshift3 >temp
+                	                mv temp newxyshift.cat
+                        	        echo $FITFILE `cat newxyshift.cat` `cat $imagetrans3sd | grep "rms"` "3times" >>list_matchmatss
+				else
+					echo "rms is too much larger,image match faild"
+					break
+				fi
+			else
+				echo "No $imagetrans3sd created for the third match"
+				break
+			fi
+		   else
+#                        echo "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"  
+#                        echo `cat $imagetrans3sd | grep "shift"`
+#                        echo `cat $imagetrans3sd | grep "rms"`	
+			cat $imagetrans3sd | grep "shift" | awk '{print($2)}' |  tr '\n' '  ' > temp
+			cat temp | awk '{print($1+xshift0,$2+yshift0)}' xshift0=$xshift0 yshift0=$yshift0 >newxyshift.cat
+#			rm -rf temp	
+			echo $FITFILE `cat newxyshift.cat` `cat $imagetrans3sd | grep "rms"` "1times" >>list_matchmatss
+	 	   fi
+        else
+
+		echo "No $imagetrans3sd created for the first match"
+	        break
+
+        fi
+	
+#======================================================
+# transform the xy of new image to temp.
+	if test -r $OUTPUT_geoxytran3
+	then 
+		echo "All xytran from image to temp finished"
+	else
+		echo `date` "All xytran from image to temp"
+		#wc $imagetrans3sd
+		#wc $OUTPUT
+		#echo $inprefix
+		echo "~~~~~~~~~~~~~~~~~~~~~"
+        	cd $HOME/iraf
+        	cp -f login.cl.old login.cl
+        	echo noao >> login.cl
+        	echo image >> login.cl
+        	echo "cd $DIR_data" >> login.cl
+		echo "geoxytran(\"$OUTPUT\", \"$OUTPUT_geoxytran3\",\"$imagetrans3sd\", transfo=\"$inprefix\",geometr=\"geometric\",directi=\"backward\",xcolumn=1,ycolumn=2,calctyp=\"double\",min_sig=7)" >>login.cl
+		echo logout >> login.cl
+        	cl < login.cl >xlogfile 
+        	cd $HOME/iraf
+        	cp -f login.cl.old login.cl
+        	cd $DIR_data
+	fi
+#=====================================================
+	echo "flux calibration"
+#	from  
+#	wc $OUTPUT_geoxytran3
+#	echo "~~~~~~~~~~"
+        cat $OUTPUT_geoxytran3 | awk '{if($1>20 && $2>20 && $1<3020 && $2<3020) print($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)}'| sort -n -k 7 | head -10000 | awk '{print($1,$2,$7)}' > obj.db
+#	wc $tempmatchstars_mag
+        cp $tempmatchstars_mag ref.db
+	wc ref.db
+	wc obj.db
+        ./fluxmatch #output is refsmall_new
+        echo `date` "caculate the different magnitude"
+	wc refsmall_new
+        for((i=0;i<5;i++))
+        do
+                wc refsmall_new | awk '{print($1)}' >flux_res
+                cat refsmall_new | awk 'BEGIN{total=0}{total=total+($3-$6)}END{print total }' >>flux_res
+                cat flux_res | tr '\n' ' ' >flux_res1
+                O2A=`cat flux_res1 | awk '{print($2/$1)}'` #模板流量比目标图像流量O2A mag
+        done
+	rm -rf flux_res flux_res1
+	echo "O2A="$O2A
+	cat $OUTPUT_geoxytran3 | awk '{print($1,$2,$3,$4,$5,$6,$7+O2A,$8,$9,$10)}' O2A=$O2A >temp
+	mv temp $OUTPUT_geoxytran3
+
+#======================================================
+	echo `date` "crossmatch"  # cross match between new image and temp in XY spece.
+	echo $crossRedius $diffmag 
+	./xnewCrossMatch $crossRedius $diffmag $OUTPUT_geoxytran3 $Alltemplatetable $crossoutput_xy
+#select out those at the edge of the image.
+#	cp $crossoutput_xy newoutput_chb.dat
+	cat $crossoutput_xy | awk '{if($1>ejmin && $1<ejmax && $2>ejmin && $2<ejmax && $13==2) print($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)}' ejmin=$ejmin ejmax=$ejmax | grep -v "99.000" >$crossoutput_mag   # new variables
+	cat $crossoutput_xy | awk '{if($1>ejmin && $1<ejmax && $2>ejmin && $2<ejmax && $13==1) print($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)}' ejmin=$ejmin ejmax=$ejmax | grep -v "99.000" >temp 
+	mv temp $crossoutput_xy  #new ot candidates 
+	NumOT=`wc $crossoutput_xy | awk '{print($1)}'`
+	
+	wc $crossoutput_xy $crossoutput_mag
+#======================================================
+	if [ $NumOT -gt 100 ]  # this might be coused by the missed crossmatch. if the case, this image would be deleted.
+	then 
+		echo "Too many OT candidates"
+		if test -r noupdate.flag
+		then	
+			echo "have noupdate.flag"
+			dateobs=`gethead $FITFILE "D-OBS-UT"`
+			timeobs=`gethead $FITFILE "T-OBS-UT"`
+			rm -rf listtime
+		        for ((i=0;i<$NumOT;i++))
+        		do
+                		echo "0.00  0.00 0.00  0.00" $dateobs"T"$timeobs $FITFILE >>listtime
+		        done
+			echo "making the update"
+			#wc $crossoutput_xy
+			paste listtime $crossoutput_xy |  awk '{if($7>0 && $8>0 && $7<3056 && $8<3056)print($1,$2,$3,$4,$7,$8,$5,$6,$9,$10,$11,$12,$13,$14,$15,$16)}' | column -t >crossoutput_skytemp
+			mv crossoutput_skytemp $crossoutput_sky
+			ls $crossoutput_sky >>listupdate 
+			nupdate=`wc listupdate | awk '{print($1)}'`
+			echo "nupdate="$nupdate
+			if [ $nupdate -lt 5  ]
+			then
+				ls $FITFILE >>xMissmatch.list
+			else
+				echo "nupdate num. is larger than 5"
+				cat listupdate | tail -5 >listupdate_last5
+			#	cat listupdate_last5
+				ls $FITFILE >>listupdateimage.list
+				ls $FITFILE >>listupdateimage.list.bak
+				Num_update=`wc listupdateimage.list | awk '{print($1)}'`
+				if [ $Num_update -lt 40 ]
+				then
+					paste xChbTempBefore.cat listupdate_last5 xChbTempAfter.cat >xChbTempBatch_update.sh
+			                sh xChbTempBatch_update.sh
+				        sh xUpdate_refcom3d.cat.sh  #update the refcom3d.cat 	
+				else
+					#dir_tempfile=`cat listtemp_dirname`
+					#rm -rf $dir_tempfile/noupdate.flag
+					rm -rf noupdate.flag  
+				fi
+			fi	
+		else
+			ls $FITFILE >>xMissmatch.list
+		fi
+	else # The number is smaller than expected
+	{
+	#==========================================================
+	#This part is to transform the xy of OT candidates into the Ra and Dec.
+	echo `date` "cctran of OT to image"
+	if test -r $imagetrans1sd
+	then
+		echo "imagetrans1sd exist"  
+		cd $HOME/iraf
+                cp -f login.cl.old login.cl
+                echo noao >> login.cl
+                echo digiphot >> login.cl
+                echo image >> login.cl
+                echo imcoords >>login.cl
+                echo "cd $DIR_data" >> login.cl
+                echo "cctran(input=\"$crossoutput_xy\",output=\"$crossoutput_sky\", database=\"$Accfile\",solutions=\"first\", geometry=\"geometric\",lngunits=\"degrees\",latunits=\"degrees\",projection=\"tan\",xcolumn=1,ycolumn=2,min_sigdigits=7,forward+,lngform=\"%12.7f\",latform=\"%12.7f\" ) " >>login.cl
+               echo "geoxytran(\"$crossoutput_xy\", \"$newimageOTxyThird\",\"$imagetrans3sd\", transfo=\"$inprefix\",geometr=\"geometric\",directi=\"forward\",xcolumn=1,ycolumn=2,calctyp=\"double\",min_sig=7)" >>login.cl
+		 echo "geoxytran(\"$newimageOTxyThird\", \"$newimageOTxySecond\",\"$imagetrans2sd\", transfo=\"$inprefix\",geometr=\"geometric\",directi=\"forward\",xcolumn=1,ycolumn=2,calctyp=\"double\",min_sig=7)" >>login.cl
+		 echo "geoxytran(\"$newimageOTxySecond\", \"$newimageOTxyFis\",\"$imagetrans1sd\", transfo=\"$inprefix\",geometr=\"geometric\",directi=\"forward\",xcolumn=1,ycolumn=2,calctyp=\"double\",min_sig=7)" >>login.cl	
+		echo "imarith(\"$FITFILE\",\"-\",\"$bg\",\"$FITFILE_subbg\")" >>login.cl
+                echo logout >> login.cl
+                cl < login.cl >xlogfile
+                cd $HOME/iraf
+                cp -f login.cl.old login.cl
+                cd $DIR_data	
+	else
+		cd $HOME/iraf
+		cp -f login.cl.old login.cl
+		echo noao >> login.cl
+		echo digiphot >> login.cl
+		echo image >> login.cl
+		echo imcoords >>login.cl
+		echo "cd $DIR_data" >> login.cl
+        	echo "cctran(input=\"$crossoutput_xy\",output=\"$crossoutput_sky\", database=\"$Accfile\",solutions=\"first\", geometry=\"geometric\",lngunits=\"degrees\",latunits=\"degrees\",projection=\"tan\",xcolumn=1,ycolumn=2,min_sigdigits=7,forward+,lngform=\"%12.7f\",latform=\"%12.7f\" ) " >>login.cl
+       		echo "geoxytran(\"$crossoutput_xy\", \"$newimageOTxyFis\",\"$imagetrans3sd\", transfo=\"$inprefix\",geometr=\"geometric\",directi=\"forward\",xcolumn=1,ycolumn=2,calctyp=\"double\",min_sig=7)" >>login.cl
+		echo logout >> login.cl
+        	cl < login.cl >xlogfile
+		cd $HOME/iraf
+        	cp -f login.cl.old login.cl
+        	cd $DIR_data
+	fi
+		cat $newimageOTxyFis | awk '{print($1+xshift0,$2+yshift0,$3,$4,$5,$6,$7,$8,$9,$10)}' xshift0=$xshift0 yshift0=$yshift0 >temp
+		mv temp $newimageOTxyFis
+#===========================================================
+#In final $crossoutput_sky, the parameters are
+#ra dec ox(newIm) oy(newIm) rx(refIm) ry(refIm) flux  ***
+	echo `date` "making the skyOT list"
+	rm -rf listtime
+#	timeobs=`gethead $FITFILE "date-obs"`
+	dateobs=`gethead $FITFILE "D-OBS-UT"`
+        timeobs=`gethead $FITFILE "T-OBS-UT"`
+	
+	for ((i=0;i<$NumOT;i++))
+	do
+		echo $dateobs"T"$timeobs $FITFILE >>listtime
+	done
+
+	paste $crossoutput_sky $newimageOTxyFis $crossoutput_xy listtime | awk '{print($1,$2,$11,$12,$21,$22,$31,$32,$3,$4,$5,$6,$7,$8,$9,$10)}' | column -t >crossoutput_skytemp
+	mv crossoutput_skytemp $crossoutput_sky
+#=================================
+#To eject the bad pixel by the crossmatch from $crossoutput_sky and badpixelFile.db
+#badpixel file is named as badpixelFile.db
+#	echo "@@@@@%%%%%%%%&&&&&&&!!!!!!!!!!!!!!!!"
+#	wc $crossoutput_sky
+#	echo "To eject the bad pixel"
+#	cp $crossoutput_sky newoutput
+#	./xAutoEjectBadpixel
+#	mv newoutputEjected $crossoutput_sky
+#	rm -rf newoutput
+#	wc $crossoutput_sky
+
+##This part is also able to eject the effect by bright stars, the table is named as brightstarsFile.db
+#	echo "To eject the effect from bright star"
+#	cp $crossoutput_sky newoutput
+#	./xAutoEjectBrightstar
+#	mv newoutputEjected $crossoutput_sky
+#        rm -rf newoutput
+#	wc $crossoutput_sky
+
+#===============================================
+#	ls $crossoutput_sky >>listsky
+	listsky=`echo $ID_MountCamara"_"$ra_mount"_"$dec_mount".list"`
+	echo $listsky
+	ls $crossoutput_sky >>$listsky
+#	The output name is matchchb.log in which an object who appear for at least twice in 5 images.
+	echo '================= Templatemark by CHB ================'	
+	cat $listsky | tail -5 >listsky1
+	RN=`wc listsky1 | awk '{print($1)}'`
+	if [ $RN -eq 5 ]
+	then
+		paste xChbTempBefore.cat listsky1 xChbTempAfter.cat >xChbTempBatch.sh
+		sh xChbTempBatch.sh
+		wait
+		if test -s matchchb.log
+		then
+			cp matchchb.log $ID_MountCamara"_"$inprefix"_matchchb.log"
+			echo "@@@@@@@@@@@@@@@@"
+			echo "The possible optical transients from matchchb.log are :"
+			echo "Time, image, RA, DEC,xi,yi, mag, merr"
+			#cat matchchb.log | awk '{print($7,$8,$1,$2,$3,$4,$14,$15)}'
+#			cat matchchb.log |  awk '{print($5,$6)}' >temp2framecoord_ref
+#			cat matchchb.log | awk '{print($3,$4)}' >temp2framecoord_new
+#			echo "@@@@@@@@@@@@@@@@"
+			if test -r $ID_MountCamara"_matchchb_all.log"
+			then
+				cat $ID_MountCamara"_matchchb_all.log" matchchb.log >matchchb_all.log1
+				mv matchchb_all.log1 $ID_MountCamara"_matchchb_all.log"
+			else
+				cp matchchb.log $ID_MountCamara"_matchchb_all.log"
+			fi
+			
+			cp $ID_MountCamara"_matchchb_all.log" list2frame.list
+			cat list2frame.list | awk '{print($5,$6,$13)}' >list2frame.list.tv
+#			#cp matchchb.log newframeOT.obj
+#			wc matchchb.log
+			cat matchchb.log | awk '{print($1,$2,$3,$4,$5,$6,$7,$8,$14,$15,$16)}' | sed 's/T/ /' | sed 's/:/ /g' >temp1
+			cat temp1 | awk '{if($13<3)print($1,$2,$3,$4,$5,$6,$7"T"$8":"$9":"$10,$8+$9/60+$10/3600,$11,$12,$13,$14)}' |tr -s '\n' | sort -n -k 5 | sort -n -k 6 | uniq | column -t >newframeOT.obj
+			cp newframeOT.obj $otc2
+			cat newframeOT.obj | awk '{print($5,$6,$13)}' >newframeOT.obj.tv
+#			./xlc_new1 #output is newStableStar.cat and newVarableStar.cat
+#			sort -n -r -k 17 newVarableStar.cat >temp1 #sort them with variation among these images.
+#			mv temp1 newVarableStar.cat
+#			cat newVarableStar.cat | awk '{print($5,$6)}' >newVarableStar.cat_xytemp
+#			cat newVarableStar.cat | awk '{print($3,$4)}' >newVarableStar.cat_xynewimg
+#			wc newVarableStar.cat
+#			cat newVarableStar.cat >>newVarableStarAll.cat
+			
+		else
+			echo "No transient candidates in the last 5 images"
+		fi
+	else
+		echo 'Less than 5 images in listsky1 '
+	fi
+
+#===============================================
+
+#	echo "=============="
+#	cat list2frame.list | awk '{printf("%f %f %s %s %f %f \n ",$5,$6,$7,$8,$14,$15)}' |tr -s '\n' | sort -n -k 1 | sort -n -k 2 | uniq | column -t>updaterefcom3d.cat
+
+#	cat newframeOT.obj | awk '{print($7,$8,$1,$2,$3,$4)}' 
+#	echo "=============="
+	if test -r listskyot.list
+	then
+		:		
+	else
+		cp $crossoutput_sky listskyot.list
+	fi
+	cp $crossoutput_sky listnewskyot.list
+	displayPadNum=`ps -all | awk '{if($14=="display") print($4)}'`
+	
+	gnuplot plot2frame.gn  # it includs listnewskyot.list listskyot.list list2frame.list newframeOT.obj
+ 	 kill -9 $displayPadNum
+	#display plot3frame.png &
+#        display -resize 1012x1012+0+0  plot3frame.png &
+	#display -resize 1012x1012+0+0  plot2frame.png &
+	display plot2frame.png &
+	ls $crossoutput_sky >>listskyotfile
+	cat listskyotfile | tail -2000 >listskyotfileHis
+	cp listskyotfileHis listskyotfile
+
+	rm -rf listskyot.list	
+	for file in `cat listskyotfileHis`
+	do
+		cat $file >>listskyot.list
+	done
+#	cat listskyot.list.all $crossoutput_sky | uniq >listskyot.list 
+#	cp listskyot.list listskyot.list.all
+
+#=================================================
+        echo `date` "display temp and new image and tvmark these OTc1"
+        cd $HOME/iraf
+        cp -f login.cl.old login.cl
+        echo noao >> login.cl
+        echo digiphot >> login.cl
+        echo image >> login.cl
+        echo imcoords >>login.cl
+        echo "cd $DIR_data" >> login.cl
+        #echo "display(image=\"$FITFILE\",frame=1)" >>login.cl #display newimage in frame 1
+        echo "display(image=\"$FITFILE_subbg\",frame=1)" >>login.cl #display newimage in frame 1
+        echo "display(image=\"$tempsubbgfile\",frame=2)" >>login.cl #display temp file in frame 2
+       echo "tvmark(frame=1,coords=\"$newimageOTxyFis\",mark=\"circle\",radii=100,color=204,label+)" >>login.cl # tvmark new OT in frame 2
+        echo "tvmark(frame=2,coords=\"$crossoutput_xy\",mark=\"circle\",radii=100,color=204,label-)" >>login.cl #tvmark new OT in frame 2
+       echo "tvmark(frame=1,coords=\"$newimageOTxyFis\",mark=\"circle\",radii=10,color=204,label+)" >>login.cl # tvmark new OT in frame 2
+        echo "tvmark(frame=2,coords=\"$crossoutput_xy\",mark=\"circle\",radii=10,color=204,label-)" >>login.cl #tvmark new OT in frame 2
+	echo "tvmark(frame=2,coords=\"list2frame.list.tv\",mark=\"circle\",radii=50,color=205,label-)" >>login.cl # tvmark new OT in frame 2
+        echo "tvmark(frame=2,coords=\"newframeOT.obj.tv\",mark=\"circle\",radii=50,color=206,label-)" >>login.cl # tvmark new OT in frame 1
+#        echo "tvmark(frame=1,coords=\"temp2framecoord_new\",mark=\"circle\",radii=100,color=204,label-)" >>login.cl # tvmark new OT in frame 1
+#	echo "tvmark(frame=1,coords=\"temp2framecoord_new\",mark=\"circle\",radii=20,color=204,label-)" >>login.cl # tvmark new OT in frame 1
+#        echo "tvmark(frame=2,coords=\"temp2framecoord_ref\",mark=\"circle\",radii=100,color=205,label-)" >>login.cl # tvmark new OT in frame 2
+#        echo "tvmark(frame=1,coords=\"$crossoutput_xy\",mark=\"circle\",radii=100,color=204,label-)" >>login.cl #tvmark new OT in frame 2
+#        echo "tvmark(frame=3,coords=\"temp3framecoord_ref\",mark=\"circle\",radii=100,color=204,label+)" >>login.cl #tvmark new OT in frame 3
+        echo logout >> login.cl
+        cl < login.cl >xlogfile 
+        cd $HOME/iraf
+        cp -f login.cl.old login.cl
+        cd $DIR_data
+
+#=======================================================
+#produce the xyshift.cat in which xshift and yshift are shown.
+#which is used to distinguish which match method will be adapted, triangles or tolerance.
+#	echo `date` "Producing the xyshift for the guider "
+#	cat  $imagetrans3sd | grep "shift" | awk '{print($2)}' | tr '\n' '  ' > newxyshift.cat
+#	echo >> newxyshift.cat
+#	cat newxyshift.cat | awk '{print($1+xshift0,$2+yshift0)}' xshift0=$xshift0 yshift0=$yshift0 >temp
+#	mv temp newxyshift.cat
+	#cat newxyshift.cat  >>xyshiftall.cat
+# =======================================================
+#For this part, it has not finished because it depends on the huanglei's code.
+	#xaxis=decaxis
+	#yaxis=raaxis
+	ccdid=`gethead $FITFILE "CCDID"`
+	case $ccdid in 
+	A) CCD_set=South;;
+	B) CCD_set=North;;
+	C) CCD_set=South;;
+        D) CCD_set=North;;
+	E) CCD_set=South;;
+        F) CCD_set=North;;
+	G) CCD_set=South;;
+        H) CCD_set=North;;
+	I) CCD_set=South;;
+        J) CCD_set=North;;
+	K) CCD_set=South;;
+	L) CCD_set=North;;
+	esac
+	xshiftG=`cat newxyshift.cat | awk '{print(-1*$1)}'`
+	yshiftG=`cat newxyshift.cat | awk '{print(-1*$2)}'`
+	echo $xshiftG $yshiftG
+	if [ $CCD_set == "South"  ] # south CCD
+	then
+		echo "South CCD"
+		deltapixel=`echo $pixelscale $dec_mount | awk '{print($1/cos($2+10))}'`
+		if [ ` echo " $yshiftG > 0 " | bc ` -eq 1 ]
+		then
+			RA_guider=N	
+		else
+			RA_guider=P
+			yshiftG=`echo $yshiftG | awk '{print(-1*$1)}'`
+		fi
+                if [ `echo " $xshiftG > 0"  | bc ` -eq 1 ] 
+                then
+                        DEC_guider=P
+                else
+                        DEC_guider=N
+                        xshiftG=`echo $xshiftG | awk '{print(-1*$1)}'`
+		fi
+	else # north CCD
+		echo "North CCD"
+		deltapixel=`echo $pixelscale $dec_mount | awk '{print($1/cos($2-10))}'`
+		if  [ ` echo " $yshiftG > 0 " | bc ` -eq 1 ]
+                then
+                        RA_guider=P
+                else
+                        RA_guider=N
+                        yshiftG=`echo $yshiftG | awk '{print(-1*$1)}'`
+                fi
+
+		if [ `echo " $xshiftG > 0"  | bc ` -eq 1 ]
+	        then
+        	        DEC_guider=N
+	        else
+                	DEC_guider=P
+			xshiftG=`echo $xshiftG | awk '{print(-1*$1)}'`
+        	fi
+	fi
+	xshiftG_sky=`echo $xshiftG $deltapixel | awk '{print($1*$2)}'`
+	yshiftG_sky=`echo $yshiftG $deltapixel | awk '{print($1*$2)}'`	
+	echo $RA_guider $yshiftG $DEC_guider $xshiftG
+	#RADECmsg=`echo $ccdid"_"$RA_guider$yshiftG$DEC_guider$xshiftG`
+	RADECmsg_sky=`echo $ccdid"_ra_"$RA_guider$yshiftG_sky"_dec_"$DEC_guider$xshiftG_sky`
+	echo $RADECmsg_sky >>listmsgforHuang
+	echo "Guider direction and values are in arcsec " $RADECmsg_sky
+	 
+#	./xsentshift #sent the shift values to telescope controlers.  
+#======================================================
+#This part is to calculate the FWHM for those standard stars in the new image
+#	echo `date` "Calculating the mean FWHM for this image"
+	if test -s $imagetmp3sd
+	then
+		./xFwhmCal_single.sh $DIR_data $FITFILE $imagetmp3sd $OUTPUT_fwhm
+	else
+		./xFwhmCal_single.sh $DIR_data $FITFILE $imagetmp1sd $OUTPUT_fwhm 
+	fi
+
+#======================================================
+# This part might not be correct, so it is not used right now. It should be checked later.
+#	echo `date` "Trim the subimage around the OT from reference and new images"
+#	ls $crossoutput_sky >listOT
+	cp $FITFILE $tempfile matchchb.log $otc2 $trimsubimage_dir
+#	./xTrimIm.new.sh & 
+#=====================================================
+	date >time_redu1
+	cat time_redu_f time_redu1 >time_redu2
+#	cat time_redu2 | awk '{print($5)}' | sed 's/:/ /g' | tr '\n' ' ' | awk '{print(($4-$1)*3600+($5-$2)*60+($6-$3))}' >time_cal
+	cat time_redu2 | awk '{print($4)}' | sed 's/:/ /g' | tr '\n' ' ' | awk '{print(($4-$1)*3600+($5-$2)*60+($6-$3))}' >time_cal
+	time_need=`cat time_cal`
+	echo `date`', All were done in ' $time_need 'sec'
+#======================================================
+	rm -rf  bak.fit  Res*  *2sd.fit 
+	
+	cp $FITFILE $OUTPUT_geoxytran3  $lc_dir
+	cp $Alltemplatetable $tempfile $tempsubbgfile $Accfile $tempmatchstars $sub_dir
+	mv  $imagetmp2sd $OUTPUT_new $bg $imagetrans2sd $FITFILE $sub_dir
+	rm -rf $FITFILE
+#=======================================================
+	date -u >time_dir
+	year=`cat time_dir | awk '{print($6)}'`
+	month=`cat time_dir | awk '{print($2)}'`
+	day=`cat time_dir | awk '{print($3)}'`
+	wholeotdirectory=`echo "/data/workspace/resultfile/"$year$month$day"/wholeimfile"`
+	resultfiles=`echo $inprefix"*"`
+	skyOTfile=`echo $inprefix".fit.skyOT"`
+	cp $resultfiles listskyot.list newframeOT.obj matchchb.log matchchb_all.log $wholeotdirectory 
+        cp $wholeotdirectory/$skyOTfile ./
+#=================================================
+	}
+	fi
+	echo "***************Cataloge reduction finished**********************"
+done

@@ -1,0 +1,210 @@
+/* sentfwhm.c*/
+#include <string.h>
+#include  <math.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h> /*for struct sockaddr_in*/
+#include <sys/io.h>
+#include <unistd.h>
+#include <stdbool.h>
+#include  <stdio.h>
+
+#define DEST_IP   "192.168.18.103"
+#define DEST_PORT 18850
+
+int main()
+{
+  int res;
+  int sockfd;
+  struct sockaddr_in dest_addr;
+  int len, bytes_sent;
+  
+  int  i;
+  float deltaX,deltaY;
+  float    x[2];
+  char	   msg[30];
+  FILE     *fp1; 
+// char  *lastshiftlist;
+
+
+//    lastshiftlist="lastshift.tmp";
+     fp1=fopen("newxyshift.cat","r");
+  
+	if(fp1)
+       	{
+	     i=0;
+             if((fscanf(fp1,"%f %f",&deltaX,&deltaY))!=EOF)
+             {  
+             x[0]=deltaX;
+	    // printf("** frame_num is %f\n",frame_num);
+             //strcpy(im,image);
+		printf("** deltax is %f\n",x[0]);
+             x[1]=deltaY;
+		printf("** deltay is %f\n",x[1]);
+//		printf("i,imagename and sum are %d and %s and %f\n",i,image,sum);
+//	i++;
+      	     }	
+	
+		//*msg=x5[i];
+		//*msg=x[4];
+//		x[0]=x[0]*100;
+//		x[1]=x[1]*100;
+//============================================================================
+ 		 
+
+               if(x[0]>=1000 && x[1]>=1000)
+                     {
+                        sprintf(msg,"d#1GshiftX%4.0f%%Y%4.0f%%",x[0],x[1]);
+                     }
+
+                if(x[0]>=100 && x[0]<1000 && x[1]>=1000)
+                     {
+                        sprintf(msg,"d#1GshiftX0%3.0f%%Y%4.0f%%",x[0],x[1]);
+                     }
+
+                if(x[0]>=10 && x[0]<100 && x[1]>=1000)
+                     {
+                        sprintf(msg,"d#1GshiftX00%2.0f%%Y%4.0f%%",x[0],x[1]);
+                     }
+
+                if(x[0]>=1 && x[0]<10 && x[1]>=1000)
+                     {
+                        sprintf(msg,"d#1GshiftX000%1.0f%%Y%4.0f%%",x[0],x[1]);
+                     }
+		
+                if( x[0]<1 && x[1]>=1000)
+                     {
+                        sprintf(msg,"d#1GshiftX0000%%Y%4.0f%%",x[1]);
+                     }
+
+
+//============================================================================		
+
+                if(x[0]>=1000 && x[1]>=100 && x[1]<1000)
+                     {
+                        sprintf(msg,"d#1GshiftX%4.0f%%Y0%3.0f%%",x[0],x[1]);
+                     }
+
+                if(x[0]>=100 && x[0]<1000 && x[1]>=100 && x[1]<1000)
+                     {
+                        sprintf(msg,"d#1GshiftX0%3.0f%%Y0%3.0f%%",x[0],x[1]);
+                     }
+
+                if(x[0]>=10 && x[0]<100 && x[1]>=100 && x[1]<1000)
+                     {
+                        sprintf(msg,"d#1GshiftX00%2.0f%%Y0%3.0f%%",x[0],x[1]);
+                     }
+
+                if(x[0]>=1 && x[0]<10 && x[1]>=100 && x[1]<1000)
+                     {
+                        sprintf(msg,"d#1GshiftX000%1.0f%%Y0%3.0f%%",x[0],x[1]);
+                     }
+
+                if( x[0]<1 && x[1]>=100 && x[1]<1000)
+                     {
+                        sprintf(msg,"d#1GshiftX0000%%Y0%3.0f%%",x[1]);
+                     }
+
+//==============================================================================
+
+                if(x[0]>=1000 && x[1]>=10 && x[1]<100)
+                     {
+                        sprintf(msg,"d#1GshiftX%4.0f%%Y00%2.0f%%",x[0],x[1]);
+                     }
+
+                if(x[0]>=100 && x[0]<1000 && x[1]>=10 && x[1]<100)
+                     {
+                        sprintf(msg,"d#1GshiftX0%3.0f%%Y00%2.0f%%",x[0],x[1]);
+                     }
+
+                if(x[0]>=10 && x[0]<100 && x[1]>=10 && x[1]<100)
+                     {
+                        sprintf(msg,"d#1GshiftX00%2.0f%%Y00%2.0f%%",x[0],x[1]);
+                     }
+
+                if(x[0]>=1 && x[0]<10 && x[1]>=10 && x[1]<100)
+                     {
+                        sprintf(msg,"d#1GshiftX000%1.0f%%Y00%2.0f%%",x[0],x[1]);
+                     }
+
+                if(x[0]<1 && x[1]>=10 && x[1]<100)
+                     {
+                        sprintf(msg,"d#1GshiftX0000%%Y00%2.0f%%",x[1]);
+                     }
+
+//============================================================================
+
+               if(x[0]>=1000 && x[1]>=1 && x[1]<10)
+                     {
+                        sprintf(msg,"d#1GshiftX%4.0f%%Y000%1.0f%%",x[0],x[1]);
+                     }
+
+                if(x[0]>=100 && x[0]<1000 && x[1]>=1 && x[1]<10)
+                     {
+                        sprintf(msg,"d#1GshiftX0%3.0f%%Y000%1.0f%%",x[0],x[1]);
+                     }
+
+                if(x[0]>=10 && x[0]<100 && x[1]>=1 && x[1]<10)
+                     {
+                        sprintf(msg,"d#1GshiftX00%2.0f%%Y000%1.0f%%",x[0],x[1]);
+                     }
+
+                if(x[0]>=1 && x[0]<10 && x[1]>=1 && x[1]<10)
+                     {
+                        sprintf(msg,"d#1GshiftX000%1.0f%%Y000%1.0f%%",x[0],x[1]);
+                     }
+
+                if(x[0]<1 && x[1]>=1 && x[1]<10)
+                     {
+                        sprintf(msg,"d#1GshiftX0000%%Y000%1.0f%%",x[1]);
+                     }
+
+//============================================================================
+
+                if(x[0]<1 && x[1]<1)
+                     {
+                        sprintf(msg,"d#1GshiftX0000%%Y0000%%");
+                     }
+
+
+
+		printf("msg=%s\n\n",msg);
+
+       	 }
+
+	else
+	   printf("Could not open file\n");
+           fclose(fp1);	
+
+  /* 取得一个套接字*/
+  sockfd = socket(AF_INET, SOCK_STREAM, 0);
+  if (sockfd == -1) {
+    perror("socket()");
+    exit(1);
+  }
+
+  /* 设置远程连接的信息*/
+  dest_addr.sin_family = AF_INET;                 /* 注意主机字节顺序*/
+  dest_addr.sin_port = htons(DEST_PORT);          /* 远程连接端口, 注意网络字节顺序*/
+  dest_addr.sin_addr.s_addr = inet_addr(DEST_IP); /* 远程 IP 地址, inet_addr() 会返回网络字节顺序*/
+  bzero(&(dest_addr.sin_zero), 8);                /* 其余结构须置 0*/
+
+  /* 连接远程主机，出错返回 -1*/
+  res = connect(sockfd, (struct sockaddr *)&dest_addr, sizeof(struct sockaddr_in));
+  if (res == -1) {
+    perror("connect()");
+    exit(1);
+  }
+
+  len = strlen(msg);
+
+  bytes_sent = send(sockfd, /* 连接描述符*/
+                    msg,    /* 发送内容*/
+                    len,    /* 发关内容长度*/
+                    0);     /* 发送标记, 一般置 0*/
+
+  /* 关闭连接*/
+  close(sockfd);
+}
+

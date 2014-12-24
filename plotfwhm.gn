@@ -1,0 +1,19 @@
+set term png
+set output "gfwhm3d-fwhm.png"
+set contour base                                                                 
+set dgrid3d
+set view 0,0
+set pm3d at b
+set cntrparam levels incremental 0, 0.1, 5
+
+set xlabel "x pixel"
+set ylabel "y pixel"
+set zlabel "Gauss fwhm"
+splot 'newlogall1' u 1:2:3 with lp
+
+set output "gfwhm3d-radius0.5.png"
+set xlabel "x pixel"
+set ylabel "y pixel"
+set zlabel "Radius at 50% flux"
+splot 'newlogall1' u 1:2:4 with lp 
+

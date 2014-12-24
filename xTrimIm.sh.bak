@@ -1,0 +1,90 @@
+#!/bin/bash
+
+DIR_data=`pwd`
+tsize=50
+CCDsize=3056
+CCDsize_Big=`echo $CCDsize | awk '{print($1-1)}'`
+refimage=refcom.fit
+#ls *skyOT >listOT
+#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+date >time_dir
+year=`cat time_dir | awk '{print($6)}'`
+month=`cat time_dir | awk '{print($2)}'`
+day=`cat time_dir | awk '{print($3)}'`
+otsubdictory=`echo "/home/jianyan/workspace/resultfile/"$year$month$day"/otsubimfile"`
+#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+for FILE in `cat listOT`
+do
+	cp $FILE filename
+	file_whole=`echo $FILE | sed 's/\.fit.skyOT/.fit/'`
+	prefix=`echo $FILE | sed 's/\.fit.skyOT//'`
+#	echo $prefix $file_whole
+	NumOT=`wc $FILE | awk '{print($1)}'`
+	echo $FILE $file_whole $prefix $NumOT
+	for ((i=0;i<$NumOT;i++))
+	do
+		cat filename | head -1 >filetemp 
+		diff filetemp filename | grep  ">" | tr -d '>' | column -t >fileleft
+		ra=`cat filetemp | awk '{print($1)}'`
+		dec=`cat filetemp | awk '{print($2)}'`
+		xim=`cat filetemp | awk '{print($3)}'`
+		yim=`cat filetemp | awk '{print($4)}'`
+		xref=`cat filetemp | awk '{print($5)}'`
+		yref=`cat filetemp | awk '{print($6)}'`
+		
+		subname=`echo $prefix"_OT_X"$xim"Y_"$yim".fit"`
+#		echo $subname
+		xmin=`echo  $xim | awk '{printf("%.0f", $1-tsize)}' tsize=$tsize`
+		xmax=`echo  $xim | awk '{printf("%.0f", $1+tsize)}' tsize=$tsize`
+		ymin=`echo  $yim | awk '{printf("%.0f", $1-tsize)}' tsize=$tsize`
+		ymax=`echo  $yim | awk '{printf("%.0f", $1+tsize)}' tsize=$tsize`
+		xshift=1
+		yshift=1
+		if [ $(echo "$xmin < 0"|bc) = 1 ]
+		then
+#			xshift=`echo $xmin | awk '{print($1-0)}'`
+			xmin=1
+		fi
+		if [ $(echo "$xmax >= $CCDsize" |bc) = 1 ]
+                then
+		#	xshift=`echo $xmax | awk '{print($1-ccdsize_big)}' ccdsize_big=$CCDsize_Big`
+                        xmax=$CCDsize_Big
+                fi
+
+		if [ $(echo "$ymin < 0" |bc) = 1 ]
+                then
+#			yshift=`echo $ymin | awk '{print($1-0)}'`
+                        ymin=1
+                fi
+
+		if [ $(echo "$ymax >= $CCDsize" |bc) = 1 ]
+                then
+		#	yshift=`echo $ymax | awk '{print($1-ccdsize_big)}' ccdsize_big=$CCDsize_Big`
+                        ymax=$CCDsize_Big
+                fi
+#		echo $subname $xmin $xmax $ymin $ymax $xshift $yshift
+		xot_sub=`echo $xim $xmin $xshift | awk '{print($1-$2+$3)}'`
+		yot_sub=`echo $yim $ymin $yshift | awk '{print($1-$2+$3)}'`  
+#======================================================		
+		trimregion=`echo "["$xmin":"$xmax","$ymin":"$ymax"]"`
+	#	echo $trimregion
+		cd $HOME/iraf
+	        cp -f login.cl.old login.cl
+	        echo noao >> login.cl
+		echo imred >> login.cl
+	        echo ccdred >>login.cl
+	        echo "cd $DIR_data" >> login.cl
+		echo "ccdpro(images=\"$file_whole\",output=\"$subname\",trim+,trimsec=\"$trimregion\") " >>login.cl
+	        echo logout >> login.cl
+	        cl < login.cl >xlogfile 
+	
+	        cd $HOME/iraf
+	        cp -f login.cl.old login.cl
+	        cd $DIR_data
+		sethead -kr X ra=$ra dec=$dec epoch=J2000 xref=$xref yref=$yref xim=$xim yim=$yim xOT_sub=$xot_sub yOT_sub=$yot_sub OTtext=$FILE imwhole=$file_whole $subname	
+		echo $subname
+		mv $subname $otsubdictory		
+#===================================================
+		mv fileleft filename	
+	done
+done

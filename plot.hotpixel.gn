@@ -1,0 +1,6 @@
+set term png
+set output "hotpixel_trace.png"
+set grid
+set xlabel "x pixel"
+set ylabel "y pixel"
+plot [550:750][1500:2000]'list2frame.list' u 5:6,'list2frame.list' u 3:4

@@ -1,0 +1,42 @@
+#!/bin/bash
+DIR_data=`pwd`
+line=`wc listsubmark | awk '{print($1)}'`
+tvcolorred=204
+i=1
+echo $DIR_data $line $i $tvcolorred
+
+for FILE in `cat list`
+do
+	fitfile=$FILE
+#	xot=`gethead $fitfile "xim"`
+#	yot=`gethead $fitfile "yim"`
+#	xot1=`echo $xot$i`
+#	yot1=`echo $yot$i`
+#	`echo "xot"$i`=`gethead $fitfile "xim"`
+#	`echo "yot"$i`=`gethead $fitfile "yim"`	
+	
+	xot=`gethead $fitfile "xot_sub"`
+	yot=`gethead $fitfile "yot_sub"`
+#	yot=`gethead $fitfile "yim"`
+#	xot=`gethead $fitfile "xim"`
+	echo $xot $yot >filemark
+	cat filemark		
+	echo $xot $yot	
+	cd $HOME/iraf
+        cp -f login.cl.old login.cl
+        echo noao >> login.cl
+        echo image >> login.cl
+        echo "cd $DIR_data" >> login.cl
+        echo "display(image=\"$fitfile\",frame=$i)" >>login.cl #display newimage in frame 2
+        echo "tvmark(frame=$i,coords=\"filemark\",mark=\"circle\",radii=3,color=$tvcolorred)" >>login.cl #tvmark new OT in frame 1
+        echo logout >> login.cl
+        cl < login.cl  
+        cd $HOME/iraf
+        cp -f login.cl.old login.cl
+        cd $DIR_data
+	j=`echo $i | awk '{print($1+1)}'`
+	i=`echo $j`
+	echo $i $j
+#	ds9 $fitfile -regions command "circle  $xot$i $yot$i  3 # color=red " -zoom to fit -zscale  -blink yes 	
+done
+#	ds9 $string -zoom to fit -zscale  -blink yes

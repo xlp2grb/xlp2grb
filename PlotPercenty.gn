@@ -1,0 +1,6 @@
+set term png
+set output "EnergyPer.png"
+set xlabel "Num."
+set ylabel "Area(4pix)/Area(10*Pi)"
+set grid
+plot 'xphotres_addflux' u 1:12 with lp

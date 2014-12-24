@@ -1,0 +1,98 @@
+#!/bin/bash
+
+FITFILE=$1
+
+Pres_dir=`pwd`
+usno_dir=$HOME/workspace/Han/han
+cctran_dir=$HOME/workspace/tempfile/soft/
+redu_dir=$HOME/workspace/redufile/matchfile
+rm -rf mktemp
+mkdir mktemp
+
+
+cp $FITFILE mktemp
+cd mktemp
+ls $FITFILE >fitlist
+
+ifconfig | head -2 | tail -1 | awk '{print($2)}' | sed 's/addr://g' >ip_address.dat #ip address of this computer.
+echo $Pres_dir >>ip_address.dat
+cat ip_address.dat | tr '\n' ' ' >ip_address.dat1
+mv ip_address.dat1 ip_address.dat
+xlot6_autocopy.f ip_address.dat $FITFILE /home/gwac/newdata
+wait
+# to tell whether the lot6c2.py finished or not
+while [ ! –r *.cencc1 ]
+do
+#	mktempcencc.sh	
+        cat *.cencc1 | head -1 >centralCoord
+        Ra=`cat centralCoord | awk '{print($1)}'`
+        Dec=`cat centralCoord | awk '{print($2)}'`
+        cd $usno_dir
+        python template_extract_u.py $cctran_dir $Ra $Dec 6.5 1 16.8
+        python brightstar_extract_p.py $cctran_dir $Ra $Dec 6.5 10 12 14 30 50
+        sleep 1
+        mv temp* $cctran_dir/refall.txt
+        mv bright* $cctran_dir/refstand.txt
+        cd $cctran_dir
+        GP_dir=`echo $Ra"_"$Dec`
+        mkdir $GP_dir
+        mv *.acc refcom.acc
+
+        ./xcctran_temp.sh refall.txt refstand.txt refcom.acc refcom.fit $GP_dir
+
+        sleep 4
+        cp refcom3d.cat refcom1d.cat refcom.fit GwacStandflux.cat refcom3d_noupdate.cat refcom_subbg.fit $GP_dir
+        mv refcom3d.cat refcom1d.cat refcom.fit GwacStandflux.cat refcom3d_noupdate.cat refcom_subbg.fit $redu_dir
+        echo $Ra $Dec $GP_dir >list
+        cat GPoint_catalog list >temp
+        mv temp GPoint_catalog
+        cp GPoint_catalog $redu_dir
+        rm -rf list temp
+        echo "Temp at $GP_dir sky field is completed"
+
+
+done
+
+#id=`gethead $FITFILE fid` # fid is the id name for gwac or mini-gwac in the head of the fits image.
+#lot6c2.py $id fitlist     # to get the central Coordinates by Qiu's code.
+#lot6c2.py fwaca fitlist    # fwaca should be defined by the head information of the image in the fit list.
+#
+#sleep 5
+#
+#if test -r *.cencc1
+#then
+##	cp *.acc $FITFILE $cctran_dir/refcom.fit
+#	
+#	cat *.cencc1 | head -1 >centralCoord
+#	Ra=`cat centralCoord | awk '{print($1)}'`
+#	Dec=`cat centralCoord | awk '{print($2)}'`
+#	cd $usno_dir
+#	python template_extract_u.py $cctran_dir $Ra $Dec 6.5 1 16.8
+#	python brightstar_extract_p.py $cctran_dir $Ra $Dec 6.5 10 12 14 30 50
+#	sleep 1
+#	mv temp* $cctran_dir/refall.txt
+#	mv bright* $cctran_dir/refstand.txt
+#	
+#	cd $cctran_dir
+#	GP_dir=`echo $Ra"_"$Dec`
+#	mkdir $GP_dir
+#	mv *.acc refcom.acc
+#	
+#	./xcctran_temp.sh refall.txt refstand.txt refcom.acc refcom.fit $GP_dir
+#		
+#	sleep 4
+#	cp refcom3d.cat refcom1d.cat refcom.fit GwacStandflux.cat refcom3d_noupdate.cat refcom_subbg.fit $GP_dir
+#	mv refcom3d.cat refcom1d.cat refcom.fit GwacStandflux.cat refcom3d_noupdate.cat refcom_subbg.fit $redu_dir 
+#	echo $Ra $Dec $GP_dir >list
+#	cat GPoint_catalog list >temp
+#	mv temp GPoint_catalog
+#	cp GPoint_catalog $redu_dir
+#	rm -rf list temp
+#	echo "Temp at $GP_dir sky field is completed"
+#
+#else
+#	echo " lot6c2.py is not finished..."	# to get the central Coordinates by Qiu's code.
+#	exit 1
+#
+#fi
+

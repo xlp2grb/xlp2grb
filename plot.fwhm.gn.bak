@@ -1,0 +1,8 @@
+set term png
+set output "average_fwhm.png"
+set title "average FWHM plot"
+set xlabel "Image series"
+set ylabel "FWHM (pixel)"
+set grid
+#plot [][0:6] "averagefile_fin" u ($1):($5) with lp pt 2 ,'fwhm_lastdata' u ($1):($5)  title 'Last result' with p pt 5 ps 3 
+plot [][*:*] "averagefile_fin" u ($1):($5) title '' with lp pt 2 ,'fwhm_lastdata' u ($1):($5)  title '' with p pt 5 ps 3 

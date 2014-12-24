@@ -1,0 +1,99 @@
+#!/bin/bash
+
+if [ $# -ne 2 ]
+then
+echo usage: xlotc2Online.sh dir_source dir_reduction
+exit 1
+fi
+dir_source=$1 # new image file  /home/gwac/newdata/
+dir_reduction=$2 # data reduction file
+
+cd $dir_source
+if test -r oldlist
+then
+	:
+else
+	touch oldlist	
+fi
+
+xmaketemp ( )
+{
+	echo $1
+        echo $1 >>oldlist
+        ID_MountCamara=`gethead "IMAGEID" $newfile | cut -c15-17`
+        ipaddressname=`echo "ip_address_"$ID_MountCamara".dat"`
+        mv list $newfile $ipaddressname $dir_reduction
+        cd $dir_reduction
+        echo `pwd`
+
+        accfile=`echo $newfile | sed 's/\.fits/.acc/'`
+	cenccfile=`echo $newfile | sed 's/\.fits/.cencc1/'`
+        lot6c2.py $ID_MountCamara list &
+        wait
+        echo "----------first-----------"
+	if test -r $cenccfile
+	then
+        	:
+	else
+		lot6c2.py $ID_MountCamara list  &
+        	wait
+        	echo "----------second-----------"
+	fi
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%      
+        echo "update the GPoint_catalog"
+        #need to add the code to update the catalog immediately, and then copy it to the data reduction node.
+        #The premeters in the GPoint_catalog are ra_sky dec_sky ra_mount dec_mount ra_sky_dc_mount ID_Camara
+        ra1=`cat $cenccfile | head -1 | awk '{print($1)}'`
+        dec1=`cat $cenccfile | head -1 | awk '{print($2)}'`
+        ra_sky=`skycoor -d $ra1 $dec1 | awk '{print($1)}'`
+        dec_sky=`skycoor -d $ra1 $dec1 | awk '{print($2)}'`
+        ra1=`gethead $newfile "RA" `
+        dec1=`gethead $newfile "DEC" `
+        ra_mount=`skycoor -d $ra1 $dec1 | awk '{print($1)}'`
+        dec_mount=`skycoor -d $ra1 $dec1 | awk '{print($2)}'`
+        echo $ra_sky $dec_sky $ra_mount $dec_mount $ra_sky"_"$dec_sky $ID_MountCamara >>GPoint_catalog
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%      
+	echo "xGetCatalog.sh ------"
+        xGetCatalog.sh $cenccfile 
+        wait
+	echo "xTransRAtoXYacc.sh -------"
+        xTransRAtoXYacc.sh $newfile 
+        wait
+}
+
+while :
+do
+	cd $dir_source
+	date >reduct.log
+	if test ! -r *.fits
+	then
+	        echo `date` >redu.log
+		sleep 3
+		continue #this code will return to the up "do" 
+	else
+		ls *.fits >newlist
+	fi
+	diff oldlist newlist | grep  ">" | tr -d '>' | column -t | head -1 >list
+	line=`cat list | wc -l`
+	if  [ "$line" -ne 0 ]
+	then 
+		cat list
+		newfile=`cat list`
+		du -a $newfile  >mass
+	        fitsMass=` cat mass | awk '{print($1)}'`	
+	        echo "fitsMass =" $fitsMass
+		#if [ "$fitsMass" -eq 18248 ]
+		if [ "$fitsMass" -eq 36492 ]
+		#if [ "$fitsMass" -eq 36496 ]
+		then 
+			echo "@@@@@@@@"
+			xmaketemp $newfile
+		else	
+			sleep 2
+			xmaketemp $newfile
+		fi
+	else
+		cd $dir_source
+		sleep 1
+	fi
+done

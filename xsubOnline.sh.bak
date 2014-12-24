@@ -1,0 +1,79 @@
+#!/bin/bash
+#Author:xlp at 20130113
+#to check the if a new image exist
+#and then do the image subtraction
+
+#date >time_redu_f
+#echo /home/xlp/iraf/focus.online.20120815/
+#cp /home/jianyan/software/xgwacsoft/OTdetect/xotmatch.soft/* ./
+#cp /home/jianyan/software/xgwacsoft/xotmatch.soft.20121211/* ./
+
+#Dir_temp=$HOME/workspace/tempfile/result
+#Dir_rawdata=$HOME/share/gwac/20130113
+#Dir_redufile=`pwd`
+#echo $Dir_rawdata
+#echo $Dir_temp
+#echo $Dir_redufile
+./xmknewfile.sh
+#if test -f $Dir_temp/refcom3d.cat
+#then
+#        cp $Dir_temp/refcom3d.cat ./
+#        if test -f $Dir_temp/refcom.fit
+#        then
+#                cp $Dir_temp/refcom.fit ./
+#                if test -f $Dir_temp/refcom.acc
+#                then
+#                        cp $Dir_temp/refcom.acc ./
+#                        if test -f $Dir_temp/GwacStandall.cat
+#                        then
+#                                cp   $Dir_temp/GwacStandall.cat ./
+#                                if test -f $Dir_temp/refcom1d.cat
+#                                then
+#                                        cp $Dir_temp/refcom1d.cat ./
+#                                else
+#                                        echo "====These is no refcom1d.cat in tempfile====="
+#                                fi
+#                        else
+#                                echo "====These is no GwacStandall.cat in tempfile====="
+#                        fi
+#                else
+#                        echo "====These is no refcom.acc in tempfile====="
+#                fi
+#        else
+#                echo "====There is no refcom.fit in tempfile======"
+#        fi
+#else
+#        echo "====These is no refcom3d.cat in tempfile====="
+#fi
+if test -r oldlist
+then
+        echo "oldlist exist"
+else
+        echo ' ' >oldlist
+fi
+
+while :
+do
+#	rm -rf *.bg.fit
+	ls 13*_177*.fit >newlist
+	line=`diff oldlist newlist | grep  ">" | tr -d '>' | wc -l`
+	if  [ "$line" -ne 0 ]
+	then 
+		echo "New image exits!"
+		diff oldlist newlist | grep  ">" | tr -d '>' | grep -v "bg" |  grep -v "sub" | column -t >listsub
+#		cat listsub | tail -2 | head -1 >list
+		cat listsub | tail -1 >list
+		cp list listsub
+		cat list >>oldlist
+		sort oldlist >oldlist1
+		mv oldlist1 oldlist
+		./xmatch7.sub.sh
+	fi
+
+	if  [ "$line" -eq 0 ]
+	then	
+		sleep 1	
+		continue
+	fi
+	sleep 1
+done

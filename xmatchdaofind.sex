@@ -1,0 +1,135 @@
+# Default configuration file for SExtractor 2.5.0
+# EB 2006-07-14
+#
+ 
+#-------------------------------- Catalog ------------------------------------
+ 
+CATALOG_NAME     image.sex      # name of the output catalog
+CATALOG_TYPE     ASCII     # NONE,ASCII,ASCII_HEAD, ASCII_SKYCAT,
+                                # ASCII_VOTABLE, FITS_1.0 or FITS_LDAC
+PARAMETERS_NAME  xmatchdaofind.param  # name of the file containing catalog contents
+				# the list of parameters that will computed and put in the catalog for each object. 
+
+#-------------------------------ASSOC----------------------------------------
+#added by xlp at 20120809
+
+#ASSOC_NAME	sky.list	# Name of the Assoc ascII file
+#ASSOC_PARAMS	2,3,4		# Nos of the columns in the ASCII file 
+#				# that will be used as coordinates and weight
+#				# for crossmatching
+#ASSOC_RADIUS	2.0		# Search radium (in pixels) for ASSOC
+#ASSOC_TYPE	NEAREST		# FIRST: keep values corresponding to the first match found
+#				# NEAREST: values corresponding to the nearest match found
+#				# MEAN:	weighted-average values
+#				# MAG_MEAN: exponentially weighted average values
+#				# SUM:  sum values,
+#				# MAG_SUM: exponentially sum values
+#				# MIN: keep values corresponding to the match with minimum weight
+#				# MAX: keep values corresponding to the mathc with maximum weight
+#ASSOCSELEC_TYPE	-MATCHED		# ALL: all detections
+#				# MATCHED: only matched detections
+#				# -MATCHED: only detections that were not matched
+#ASSOC_DATA	2,3,4		# Numbers of the columns in the ASSOC file that 
+				# will be copied to the catalog output
+
+#------------------------------- Extraction ----------------------------------
+ 
+DETECT_TYPE      CCD            # CCD (linear) or PHOTO (with gamma correction)
+DETECT_MINAREA   3              # minimum number of pixels above threshold
+#DETECT MAXAREA   50             # maximum number of pixels above threshold
+THRESH_TYPE 	 RELATIVE       # Relative to background RMS
+				# In ADU’s (set THRESH TYPE ABSOLUTE) e.g. DETECT THRESH 1.2
+DETECT_THRESH    20            	# <sigmas> or <threshold>,<ZP> in mag.arcsec-2
+ANALYSIS_THRESH  20          	# <sigmas> or <threshold>,<ZP> in mag.arcsec-2,
+				#is just the threshold for CLASS STAR and FWHM
+ 
+FILTER           Y              # apply filter for detection (Y or N)?
+				# It may help detect faint, extended objects
+				# But the photometry is still being done on the original image
+#FILTER_NAME      default.conv   # name of the file containing the filter
+FILTER_NAME	gauss_1.5_3x3.conv
+ 
+DEBLEND_NTHRESH  32            # Number of deblending sub-thresholds
+DEBLEND_MINCONT  0.01          	# Minimum contrast parameter for deblending,图像目标中，最暗目标流量与最亮目标流量的最小比。对亮星周围暗星的探测很有用。
+
+CLEAN            Y              # Clean spurious detections? (Y or N)?
+CLEAN_PARAM      0.1            # Cleaning efficiency，取值范围是0.1-10，选择合适的值可以减少假信号的比例。
+ 
+MASK_TYPE        CORRECT        # type of detection MASKing: can be one of
+                                # NONE, BLANK or CORRECT
+                                # to account for the overlapping pixels between two objects.
+                                # NONE means that the counts in the overlap are simply added to the objects total. 
+                                # BLANK sets the overlapping pixels to zero.
+                                # CORRECT, the default, replaces them with their counterparts symmetric to the objects’ center.
+
+#------------------------------Interpolation---------------------------------                                 
+# added by xlp at 20120809
+
+INTERP_MAXXLAG 	3 		# Maximum x gap (in pixels) allowed in interpolating the input image(s).
+INTERP_MAXYLAG 	3 		# Maximum y gap (in pixels) allowed in interpolating the input image(s).
+INTERP_TYPE 	VAR_ONLY	# nterpolation method from the variance-map(s) (or weight-map(s)):
+				# NONE:  – no interpolation,
+				# VAR_ONLY: – interpolate only the variance-map (detection threshold),
+				# ALL: – interpolate both the variance-map and the image itself.
+
+#------------------------------ Photometry -----------------------------------
+ 
+PHOT_APERTURES   4             # MAG_APER aperture diameter(s) in pixels
+PHOT_AUTOPARAMS  2.5, 3.5       # MAG_AUTO parameters: <Kron_fact>,<min_radius>，
+				# 第一个参数表示目标星中核与边缘椭律的相对变化。第二个参数表示几倍的半高全宽去测光。
+ 
+SATUR_LEVEL      50000.0        # level (in ADUs) at which arises saturation
+ 
+MAG_ZEROPOINT    20            	# magnitude zero-point
+MAG_GAMMA        4.0            # gamma of emulsion (for photographic scans)
+GAIN             1.3            # detector gain in e-/ADU
+PIXEL_SCALE      12.5           # size of pixel in arcsec (0=use FITS WCS info), 
+				# it is only needed for the CLASS_STAR parameters.
+
+#FITS_UNSIGNED    Y
+#FLAG_IMAGE 	flag.fits 
+#FLAG TYPE       
+
+ 
+#------------------------- Star/Galaxy Separation ----------------------------
+ 
+SEEING_FWHM      20.4             # stellar FWHM in arcsec, it is only needed for the CLASS_STAR parameters.
+STARNNW_NAME     default.nnw    # Neural-Network_Weight table filename
+ 
+#------------------------------ Background -----------------------------------
+ 
+BACK_SIZE        64             # Background mesh: <size> or <width>,<height>,build a sky model,
+				# 不能太小，星的零度影响比较严重，也不能太大，细小结构有可能看不到。
+BACK_FILTERSIZE  2             # Background filter: <size> or <width>,<height>, smooth the image to reduce noise on small scale
+#BACK_TYPE 	 AUTO           # What background is subtracted from the images: 
+				# The internal interpolated background-map. 
+				# In the manual it says “INTERNAL” here but the keyword is AUTO. 
+BACKPHOTO_TYPE   GLOBAL          # can be GLOBAL or LOCAL
+ 
+#------------------------------ Check Image ----------------------------------
+CHECKIMAGE_TYPE  BACKGROUND
+CHECKIMAGE_NAME  bak.fit
+ 
+#CHECKIMAGE_TYPE  APERTURES,BACKGROUND      # can be NONE, BACKGROUND, BACKGROUND_RMS,
+#CHECKIMAGE_TYPE  APERTURES,BACKGROUND,BACKGROUND_RMS,MINIBACKGROUND,OBJECTS,SEGMENTATION
+                                # MINIBACKGROUND, MINIBACK_RMS, -BACKGROUND,
+                                # FILTERED, OBJECTS, -OBJECTS, SEGMENTATION,
+                                # or APERTURES
+
+#CHECKIMAGE_NAME  check.fits,bak.fits     # Filename for the check-image
+ 
+#--------------------- Memory (change with caution!) -------------------------
+ 
+MEMORY_OBJSTACK  3000           # number of objects in stack
+MEMORY_PIXSTACK  30000         # number of pixels in stack
+MEMORY_BUFSIZE   1024           # number of lines in buffer
+ 
+#----------------------------- Miscellaneous ---------------------------------
+ 
+VERBOSE_TYPE     NORMAL         # can be QUIET, NORMAL or FULL
+				# QUIET:run silently,
+				# NORMAL: display warnings and limited info concerning the work in progress
+				# FULL: display a more complete information and the principal parameters of all the objects extracted.
+				
+WRITE_XML        N              # Write XML file (Y/N)?
+XML_NAME         sex.xml        # Filename for XML output

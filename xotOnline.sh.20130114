@@ -1,0 +1,79 @@
+#!/bin/bash
+#date >time_redu_f
+#echo /home/xlp/iraf/focus.online.20120815/
+#cp /home/jianyan/software/xgwacsoft/OTdetect/xotmatch.soft/* ./
+#cp /home/jianyan/software/xgwacsoft/xotmatch.soft.20121211/* ./
+
+Dir_temp=$HOME/workspace/tempfile/result
+Dir_rawdata=$HOME/share/gwac/20130110
+Dir_redufile=`pwd`
+echo $Dir_rawdata
+echo $Dir_temp
+echo $Dir_redufile
+
+#if test -f $Dir_temp/refcom3d.cat
+#then
+#        cp $Dir_temp/refcom3d.cat ./
+#        if test -f $Dir_temp/refcom.fit
+#        then
+#                cp $Dir_temp/refcom.fit ./
+#                if test -f $Dir_temp/refcom.acc
+#                then
+#                        cp $Dir_temp/refcom.acc ./
+#                        if test -f $Dir_temp/GwacStandall.cat
+#                        then
+#                                cp   $Dir_temp/GwacStandall.cat ./
+#                                if test -f $Dir_temp/refcom1d.cat
+#                                then
+#                                        cp $Dir_temp/refcom1d.cat ./
+#                                else
+#                                        echo "====These is no refcom1d.cat in tempfile====="
+#                                fi
+#                        else
+#                                echo "====These is no GwacStandall.cat in tempfile====="
+#                        fi
+#                else
+#                        echo "====These is no refcom.acc in tempfile====="
+#                fi
+#        else
+#                echo "====There is no refcom.fit in tempfile======"
+#        fi
+#else
+#        echo "====These is no refcom3d.cat in tempfile====="
+#fi
+cd $Dir_rawdata
+#echo ' ' >oldlist
+#cd $Dir_redufile
+
+while :
+do
+#	rm -rf *.bg.fit
+	ls 20*.fit >newlist
+	line=`diff oldlist newlist | grep  ">" | tr -d '>' | wc -l`
+	if  [ "$line" -ne 0 ]
+	then 
+		echo "New image exits!"
+		diff oldlist newlist | grep  ">" | tr -d '>' | column -t >listmatch
+#		newfile=`cat list | head -1`
+		cat listmatch | head -1 >list
+		cp list listmatch
+		cat list >>oldlist
+		sleep 3
+		for FILE in `cat list`
+		do
+			cp $FILE $Dir_redufile
+			cp listmatch $Dir_redufile
+		done
+		cd $Dir_redufile 
+		./xmatch6.sh  
+        #		./xmatch3.CataSub.2timesxyMatch.sh
+	fi
+
+	if  [ "$line" -eq 0 ]
+	then	
+		sleep 1	
+		continue
+	fi
+	sleep 1
+	cd $Dir_rawdata
+done

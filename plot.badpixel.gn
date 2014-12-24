@@ -1,0 +1,6 @@
+set term png
+set output "Darkimage_badhotpixel.png"
+set xlabel "x-axis pixel"
+set ylabel "y-axis pixel"
+set grid
+plot [0:3056][0:3056] 'Dark.fit.sex' u 1:2 title "From Darkimage" with p ps 2 pt 1 ,'bak/list2frame.list' u 3:4 title "From objimage" with p ps 2 pt 6

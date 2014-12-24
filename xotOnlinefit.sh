@@ -1,0 +1,414 @@
+#!/bin/bash
+#date >time_redu_f
+#echo /home/xlp/iraf/focus.online.20120815/
+#cp /home/jianyan/software/xgwacsoft/OTdetect/xotmatch.soft/* ./
+#cp /home/jianyan/software/xgwacsoft/xotmatch.soft.20121211/* ./
+#modified by xlp at 20140124
+#modified by xlp at 20140127
+
+#===============================================================================
+echo "xotOnline.sh newdata_dir"
+
+Dir_temp=/data2/workspace/tempfile/result
+dir_basicimage=/data2/workspace/basicfile
+#echo "Please input your data directory"
+#echo "like this: /home/xlp/data/gwac/rawdata/20130113" 
+#read Dir_rawdata
+
+Dir_rawdata=$1
+Dir_redufile=`pwd`
+temp_dir=/home/gwac/newfile  #for the temp maker computer
+temp_ip=`echo 190.168.1.40` #(ip for temp builder at xinglong)
+echo $Dir_rawdata
+echo $Dir_temp
+echo $Dir_redufile
+rm -rf *flag ip*.dat gototemp.fit newxyshift.cat newframeOT.obj newcomlist listdark listflat allxyshift.cat
+rm -rf matchchb.log matchchb_all.log xMissmatch.list list_matchmatss newimageCoord.list 
+rm -rf list2frame.list list_fin listnewskyot.list listOT listsky listsky1 listskyotfile listskyotfileHis listskyot.list listtemp listtime
+rm -rf noupdate.flag listupdateimage.list listupdate_last5 listupdate crossoutput_skytemp xatcopy_remote.flag 
+rm -rf *Initial*
+#=================================================================================
+./xmknewfile.sh
+#=================================================================================
+cd $Dir_rawdata
+if test -r oldlist
+then
+        echo "oldlist exist"
+	echo "delete the oldlist[y/n]:"
+	read chyesno
+	if [ "$chyesno"x = "y"x ]
+	then
+		cat /dev/null >oldlist  #make the oldlist empity
+	else
+		:
+	fi
+else
+        touch oldlist
+fi
+
+rm -rf *Initial*
+
+#==========================================================================
+xwfits2fit (  )
+{
+echo "---------xwfits2fit-------"
+
+fitfile_prefix=`echo $FILE | sed 's/.fits//'`
+fitfile=`echo $FILE | sed 's/.fits/.fit/'`
+fitfilegz=`echo $FILE | sed 's/.fits/.fit.gz/'`
+#echo $fitfilegz $fitfile
+cd $HOME/iraf3
+cp -f login.cl.old login.cl
+echo noao >> login.cl
+echo image >> login.cl
+echo dataio >>login.cl
+echo "cd $Dir_rawdata" >> login.cl
+#echo "display(image=\"$FILE\",frame=1)" >>login.cl #display newimage in frame 1
+echo "wfit(iraf_fil=\"$FILE\",fits_fil=\"$fitfile_prefix\",fextn=\"fit\",extensi-,global_+,make_im+,long_he-,short_h-,bitpix=16,blockin=0,scale+,autosca+)" >>login.cl
+echo logout >>login.cl
+cl < login.cl >xlogfile
+#cl <login.cl
+cd $HOME/iraf3
+cp -f login.cl.old login.cl
+cd $Dir_rawdata
+ls $fitfile >listmatch
+cp -f $fitfile listmatch $Dir_redufile
+gzip -f $fitfile
+if test ! -r fitsbakfile
+then
+	mkdir fitsbakfile
+fi
+#rm -rf $FILE 
+mv $fitfilegz fitsbakfile
+#echo "--------------------"
+cd $Dir_redufile
+
+
+}
+
+
+xMainReduction ( )
+{
+	   echo "------xmatch11.cata.sh.20131013-------"
+	   date
+           ./xmatch11.cata.sh.20131013
+           wait
+}
+
+
+#==========================================================================================
+
+xcheckcombine ( )
+{
+echo "---xcheckcombine---"
+date
+ls $fitfile >>newcomlist
+line_newcomlist=`cat newcomlist | wc -l`
+if [ $line_newcomlist -lt 5 ]
+then
+        echo "the number of new image is" $line_newcomlist
+	touch notemp.flag
+else
+#	echo `date` "---------to combine the 5 images-------"
+        comref=`cat newcomlist | head -1`
+        echo $comref
+        comimage=`echo $comref | sed 's/\.fit/com.fit/'`
+        ./xcom_withoutshift5images.sh newcomlist $comimage
+	wait
+	rm -rf newcomlist 
+	touch imcombine.flag
+        touch xatcopy_remote.flag  #make a flag
+	echo "Have imcombine.flag"
+	ipfile=`echo "ip_address_"$ID_MountCamara".dat"`
+        echo $ipadress $Dir_temp >$ipfile
+        ./xatcopy_remote.f $ipfile $comimage $temp_ip $temp_dir"/"$ID_MountCamara
+        wait
+	sleep 300
+        rm -rf imcombine.flag $comimage
+
+fi
+}
+
+#=================================================================================
+
+xcheckskyfield ( )
+{
+#if test -r xatcopy_remote.flag
+#then
+#	echo "first have xatcopy_remote.flag"
+#	continue
+#fi
+
+echo "-------------xcheckskyfield---------------"
+date
+gpfile=`echo $Dir_temp"/"GPoint_catalog`
+errorimage=`echo $Dir_temp"/"errorimage.flag`
+if test ! -r $gpfile
+then
+	echo "no GPoint_catalog"
+	#echo 0 0 0 0 test test1 >Point_catalog
+	xCheckFirstMaking
+else 
+	echo "Have GPoint_catalog"
+#	cp $gpfile $Dir_redufile
+	cat $gpfile | grep -v "^_" | awk '{if($3!="_")print($1,$2,$3,$4,$5,$6)}'>temp
+	cp temp $gpfile
+	mv temp GPoint_catalog 
+	ls newimageCoord GPoint_catalog	
+	./xcheck_skyfield # The output is named as xcheckResult
+	if [ -s xcheckResult ] ## this case for the temp is ready but not be copied., this file exists and is not emipy
+	then	
+		xcopytemp
+	else 
+		xCheckFirstMaking		
+	fi
+fi
+}
+
+xCheckFirstMaking ( )
+{
+	if test -r $errorimage
+        then
+                rm -rf xatcopy_remote.flag notemp.flag $errorimage newcomlist
+        fi
+
+        if test -r xatcopy_remote.flag
+        then
+                echo "first have xatcopy_remote.flag"
+                sleep 300
+                continue
+        else
+                xcheckcombine
+                wait
+        fi
+
+}
+
+
+#===============================
+xcheckifcopy ( )
+{
+echo "---xcheckifcopy---"
+date
+if test -s xcheckResult
+then
+                ra1_xcheckresult=`cat xcheckResult | awk '{print($1)}'`
+                dec1_xcheckresult=`cat xcheckResult | awk '{print($2)}'`
+                idCama_xcheckresult=`cat xcheckResult | awk '{print($3)}'`
+                if [ "$ra_mount" != "$ra1_xcheckresult" ]  ||  [ "$dec_mount" != "$dec1_xcheckresult" ] || [ "$ID_MountCamara" != "$idCama_xcheckresult" ]
+                then
+                        xcheckskyfield
+                        rm -rf noupdate.flag
+                else
+			xcopytemp
+	
+                fi
+else
+        xcheckskyfield
+fi
+}
+
+#===========================================
+xcopytemp (  )
+{
+		echo "---xcopytemp---"
+		date
+                rm -rf xatcopy_remote.flag  notemp.flag
+#                echo " ---- The recent temp file is for the new image ---- "
+                tempfilename=`cat xcheckResult | awk '{print($9"_"$8)}'`
+                tempfilenamefinal=`echo $Dir_temp"/"$tempfilename`
+#                echo $tempfilenamefinal
+                echo $tempfilenamefinal >listtemp_dirname  #this file for the update the file xUpdate_refcom3d.cat.sh 
+#		echo "begin copy"
+		date
+                cp -fr $tempfilenamefinal/* $Dir_redufile
+                wait
+#		echo "copy finish"
+#		date
+#                echo "----- Copy the temp from $tempfilenamefinal to $Dir_redufile -----"
+                xMainReduction
+                wait
+
+
+}
+
+
+#=================================================================================
+
+xcheckAndMakeTemp (  )
+{
+# to tell the temp for this image exist or not.
+# if not, to build it immediatelly,then build a flag file, including the information about this image.
+# if yes, copy it to the Dir_rawdata
+# to make a flag file to tell weather the temp is ready or not
+# if no flag file, break to do the next temp 
+# The parameters to check is use the head of ra and dec for mount in the image
+# To build the temp, sent the image and ip list to the Temp service automatically.
+echo "-----------xcheckAndMakeTemp-------------"
+date
+#ipadress=`ifconfig | head -2 | tail -1 | sed 's/:/ /g' | awk '{print($2)}'`
+ipadress=`ifconfig | grep "inet" |  awk '{if($5=="broadcast")print($2)}'`
+
+#-----------------------------------------------
+#readme the RA DEC from the fits name and set them into the header
+dec_flag=`echo $fitfile | cut -c19-19`
+if [ $dec_flag  -ne  0  ]
+then
+	dec_temp=`echo $fitfile | cut -c19-21`
+else
+	dec_temp=`echo $fitfile | cut -c20-21`
+fi
+ra_flag=`echo $fitfile | cut -c16-16`
+if [ $ra_flag -ne 0 ]
+then
+	ra_temp=`echo $fitfile | cut -c16-18`
+else
+	ra_temp=`echo $fitfile | cut -c17-18`
+fi
+
+sethead -kr X RA=$ra_temp DEC=$dec_temp  $fitfile
+
+#---------------------------------------------------
+
+ID_MountCamara=`gethead  $fitfile "IMAGEID" | cut -c14-17`
+ra1=`gethead $fitfile "RA"`
+dec1=`gethead $fitfile "DEC" `
+ra_mount=`skycoor -d $ra1 $dec1 | awk '{printf("%.0f\n",$1)}'`
+dec_mount=`skycoor -d $ra1 $dec1 | awk '{printf("%.0f\n",$2)}'`
+echo $ra_mount $dec_mount $ID_MountCamara >newimageCoord
+if test -s newimageCoord.list
+then
+	RaLast=`cat newimageCoord.list | awk '{print($1)}'`
+#	echo $RaLast $ra_mount
+	if [ "$RaLast"  != "$ra_mount"  ]
+	then
+		echo "New sky field"
+		rm -rf listsky newcomlist  newxyshift.cat
+		xcheckskyfield
+	else
+		echo "This sky field is continuing"
+		xcheckifcopy
+	fi
+	cp newimageCoord newimageCoord.list
+else
+	cp newimageCoord newimageCoord.list
+	xcheckskyfield
+fi
+}
+
+#=======================================================================================
+
+gzip -d *.gz
+while :
+do
+	date >time_redu_f
+	date
+	ls *.fit >newlist
+	line=`diff oldlist newlist | grep  ">" | tr -d '>' | wc -l`
+	if  [ "$line" -ne 0 ]
+	then 
+		echo "New image exits!"
+		diff oldlist newlist | grep  ">" | tr -d '>' | column -t >listmatch1
+		#==========================
+		#just for the sort the image of dark, flat, object frames
+		Ndark=`cat listmatch1 | grep "_5_" | wc -l` #dark frames
+                if [ $Ndark -gt 0  ]
+                then
+                        cat listmatch1 | grep "_5_" | head -1 >list
+                else 
+			Nflat=`cat listmatch1 | grep "_6_" | wc -l` #flat frames	
+			if [ $Nflat -gt 0 ]
+			then
+				cat listmatch1 | grep "_6_" | head -1 >list
+			
+			else
+                        	cat listmatch1 | head -1 >list
+			fi
+                fi
+		#cat listmatch1 | head -1 >list
+		#===================================
+		#cat list
+		cp -f list listmatch
+		cat list >>oldlist
+		sort oldlist >oldlist1
+		mv oldlist1 oldlist
+
+		FILE=`cat list`
+		du -a $FILE >mass
+		fitsMass=`cat mass | awk '{print($1)}'`
+	
+		#echo "fitsMass =" $fitsMass
+		
+		#if [ "$fitsMass" -lt 36490 ]
+		if [ "$fitsMass" -lt 18248 ]
+		then
+			echo "waiting ..."
+			sleep 2
+		else
+		#	xwfits2fit  #if it is a fits
+			#&&&&&&&&&&&&&&&&&&#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@   # if it is a fit
+			#echo "---------no need to do the xwfits2fit-------"
+			fitfile=`echo $FILE | sed 's/.fits/.fit/'`
+			fitfilegz=`echo $FILE | sed 's/.fit/.fit.gz/'`
+			ls $fitfile >listmatch
+			cp -f $fitfile listmatch $Dir_redufile
+			gzip -f $fitfile
+			if test ! -r fitsbakfile
+			then
+			        mkdir fitsbakfile
+			fi
+			#rm -rf $FILE 
+			mv $fitfilegz fitsbakfile
+			cd $Dir_redufile
+	
+			#&&&&&&&&&&&&&&&&&&#@@@@@#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+			ID_ccdtype=`gethead "CCDTYPE" $fitfile`
+			if [ "$ID_ccdtype"x = "DARK"x ]  #it is a dark image
+			then
+				ls $fitfile >>listdark
+				line_darklist=`wc -l listdark | awk '{print($1)}'`
+				echo $line_darklist
+				if [ $line_darklist -gt 15 ]
+				then
+					./xdarkcom.sh
+					wait
+					rm -rf *_5_* listdark
+					stringtime=`date -u +%Y%m%d%H%M%S`
+					basicstring=`echo "Dark_"$stringtime".fit"`
+					cp -f Dark.fit  $basicstring 
+					cp -f Dark.fit $basicstring badpixelFile.db $dir_basicimage
+					
+				else
+					echo "dark image is not enough"
+				fi
+			elif [ "$ID_ccdtype"x = "FLAT"x ]  # it is a flat image
+			then
+                                ls $fitfile >>listflat
+                                line_flatlist=`wc -l listflat | awk '{print($1)}'`
+				echo $line_flatlist
+                                if [ $line_flatlist -gt 15 ]
+                                then
+                                        ./xflatcom.sh
+                                        wait
+                                        rm -rf listflat *_6_*
+					stringtime=`date -u +%Y%m%d%H%M%S`
+					basicstring=`echo "Flat_"$stringtime".fit"`
+					cp -f Flat_bg.fit $basicstring
+					cp -f Flat_bg.fit $basicstring $dir_basicimage
+                                else
+                                        echo "flat image is not enough"
+                                fi
+			else   # it is the object images
+				xcheckAndMakeTemp
+				wait
+				date
+			fi
+			#&&&&&&&&&&&&&&&&&&#@@@@@#@@@@@@@@
+		fi
+	else
+		sleep 15
+	fi
+	cd $Dir_rawdata
+done
+
+#===============================================================

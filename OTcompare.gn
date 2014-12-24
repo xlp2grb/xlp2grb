@@ -1,0 +1,6 @@
+set term png
+set output "otcompare.png"
+set xlabel "xref"
+set ylabel "yref"
+set grid
+plot [1:3056][1:3056]'list2frame.list' u 5:6 title '20130109 OT candidates', 'bak20130402/list2frame.list' u 5:6 title '20130111 OT candidates'

@@ -1,0 +1,69 @@
+#!/bin/bash
+#date >time_redu_f
+#echo /home/xlp/iraf/focus.online.20120815/
+#cp /home/jianyan/software/xgwacsoft/OTdetect/xotmatch.soft/* ./
+cp /home/jianyan/software/xgwacsoft/xotmatch.soft.20121211/* ./
+
+Dir_temp=$HOME/workspace/tempfile/result
+echo $Dir_temp
+
+if test -f $Dir_temp/refcom3d.cat
+then
+        cp $Dir_temp/refcom3d.cat ./
+        if test -f $Dir_temp/refcom.fit
+        then
+                cp $Dir_temp/refcom.fit ./
+                if test -f $Dir_temp/refcom.acc
+                then
+                        cp $Dir_temp/refcom.acc ./
+                        if test -f $Dir_temp/GwacStandall.cat
+                        then
+                                cp   $Dir_temp/GwacStandall.cat ./
+                                if test -f $Dir_temp/refcom1d.cat
+                                then
+                                        cp $Dir_temp/refcom1d.cat ./
+                                else
+                                        echo "====These is no refcom1d.cat in tempfile====="
+                                fi
+                        else
+                                echo "====These is no GwacStandall.cat in tempfile====="
+                        fi
+                else
+                        echo "====These is no refcom.acc in tempfile====="
+                fi
+        else
+                echo "====There is no refcom.fit in tempfile======"
+        fi
+else
+        echo "====These is no refcom3d.cat in tempfile====="
+fi
+
+echo ' ' >oldlist
+
+while :
+do
+	rm -rf *.bg.fit
+	ls d*.fit >newlist
+	line=`diff oldlist newlist | grep  ">" | tr -d '>' | wc -l`
+	if  [ "$line" -ne 0 ]
+	then 
+		echo "New image exits!"
+		diff oldlist newlist | grep  ">" | tr -d '>' | column -t >listmatch
+		newfile=`cat listmatch | head -1`
+		if test -r $newfile
+		then
+			sleep 1
+			./xmatch5.sh & 
+		else
+			sleep 1
+			continue
+		fi
+	fi
+	if  [ "$line" -eq 0 ]
+	then	
+		sleep 1	
+		continue
+	fi
+	sleep 1
+	mv newlist oldlist
+done

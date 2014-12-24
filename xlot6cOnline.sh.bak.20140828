@@ -1,0 +1,219 @@
+#!/bin/bash
+#author: xlp
+#aim: to build the temp image and temp catalog automatically.
+#input are image and ipfiles in which the ip and terminal direction is set.
+#Other softwares and files are needed:
+# xautocopy_remote.f      -----to copy the results back automatically.
+# xGetCatalog.sh
+# list6c
+# xcctran_temp.sh
+# brightstar_extract_p.py
+# template_extract_u.py
+# lot6c2.py
+# xTransRAtoXYacc.sh
+
+xmakenewtemp (  )
+{
+        accfile=`echo $newfile | sed 's/\.fit/.acc/'`
+        cenccfile=`echo $newfile | sed 's/\.fit/.cencc1/'`
+        echo "----------first-----------"
+        lot6c2.py $ID_MountCamara list 
+        wait
+        if test ! -s $cenccfile
+        then
+		sleep 3
+                echo "----------second-----------"
+                lot6c2.py $ID_MountCamara list  
+                wait
+        fi
+	if test ! -s $cenccfile
+	then
+		sleep 3
+                echo "----------Third-----------"
+                lot6c2.py $ID_MountCamara list  
+                wait
+        fi
+
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%      
+	if test -s $cenccfile
+	then
+       		 echo "update the GPoint_catalog"
+       		 #need to add the code to update the catalog immediately, and then copy it to the data reduction node.
+       		 #The premeters in the GPoint_catalog are ra_sky dec_sky ra_mount dec_mount ra_sky_dc_mount ID_Camara
+       		 ra_s=`cat $cenccfile | head -1 | awk '{print($1)}'`
+       		 dec_s=`cat $cenccfile | head -1 | awk '{print($2)}'`
+       		 ra_sky=`skycoor -d $ra_s $dec_s | awk '{printf("%.5f",$1)}'`
+       		 dec_sky=`skycoor -d $ra_s $dec_s | awk '{printf("%.5f",$2)}'`
+       		 #ra_m=`gethead $newfile "RA" `
+       		 #dec_m=`gethead $newfile "DEC" `
+       		 #ra_mount=`skycoor -d $ra_m $dec_m | awk '{print($1)}'`
+       		 #dec_mount=`skycoor -d $ra_m $dec_m | awk '{print($2)}'`
+		 cp GPoint_catalog GPoint_catalog_old
+       		 echo $ra_sky $dec_sky $ra_mount $dec_mount $ra_sky"_"$dec_sky $ID_MountCamara | grep -v "^_" >temp
+       		 cat temp  | awk '{if($3!="_")print($1,$2,$3,$4,$5,$6)}' >>GPoint_catalog
+       		 rm -rf temp
+		#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%      
+       		 echo "xGetCatalog.sh ------"
+       		 xGetCatalog.sh $cenccfile
+       		 wait
+		#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+		 cd $dir_reduction
+		 if test -s errorimage.flag
+		 then
+        		 ipaddressname=`echo "ip_address_"$ID_MountCamara".dat"`
+                	 ip=`cat $ipaddressname | awk '{print($1)}'`
+                	 term_dir=`cat $ipaddressname | awk '{print($2)}'`
+                	 echo "no temp*.txt or bright*.txt "
+                	 xautocopy_remote.f errorimage.flag $ip  $term_dir
+			 wait
+			 rm -rf errorimage.flag $newfile
+			 mv GPoint_catalog_old GPoint_catalog
+			 break
+		 fi
+		#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+       		 echo "xTransRAtoXYacc.sh -------"
+       		 xTransRAtoXYacc.sh $newfile
+       		 wait
+		 else
+			 ipaddressname=`echo "ip_address_"$ID_MountCamara".dat"`
+                ip=`cat $ipaddressname | awk '{print($1)}'`
+                term_dir=`cat $ipaddressname | awk '{print($2)}'`
+                echo "no cenccfile after lot6c2.py " >errorimage.flag
+                echo "no cenccfile after lot6c2.py "
+                xautocopy_remote.f  errorimage.flag $ip  $term_dir
+                wait
+		cp $newfile newtest.fit
+                rm -rf errorimage.flag  $newfile 
+		#rm -rf $ipaddressname list
+                break
+
+	fi
+}
+
+
+xmaketemp ( )
+{
+	echo $1
+        echo $1 >>oldlist
+        ID_MountCamara=`gethead "IMAGEID" $newfile | cut -c14-17`
+        ipaddressname=`echo "ip_address_"$ID_MountCamara".dat"`
+	Iccdtype=`gethead $newfile "CCDTYPE"`
+	ra_m=`gethead $newfile "RA" `
+	dec_m=`gethead $newfile "DEC" `
+	ra_mount=`skycoor -d $ra_m $dec_m | awk '{print($1)}'`
+	dec_mount=`skycoor -d $ra_m $dec_m | awk '{print($2)}'`
+	if [ $Iccdtype != "OBJECT"  ]
+	then
+		echo "it is NOT an object file"
+		ipaddressname=`echo "ip_address_"$ID_MountCamara".dat"`
+		ip=`cat $ipaddressname | awk '{print($1)}'`
+		term_dir=`cat $ipaddressname | awk '{print($2)}'`
+		echo "CCDTYPE: "$Iccdtype "is not OBJECT" >errorimage.flag
+		echo "CCDTYPE: "$Iccdtype "is not OBJECT"
+		xautocopy_remote.f  errorimage.flag $ip  $term_dir
+		wait
+		rm -rf errorimage.flag list $newfile $ipaddressname
+		break
+		
+	else
+		echo "it is an object file"
+        	mv list $newfile $ipaddressname $dir_reduction
+        	cd $dir_reduction
+		rm -rf gototemp.xy gototemp.sex 
+        	echo `pwd`
+		#====================
+		if test -s GPoint_catalog
+		then
+			echo $ra_mount $dec_mount $ID_MountCamara >newIdRADEC.cat
+			rm -rf Tempfile.cat
+			/home/gwac/gwacsoft/xCrossGPointImage 
+			#output is Tempfile.cat in which rasky decsky ramount decmount rasky_decsky
+			if test -s Tempfile.cat
+			then
+				temp_dir=`cat Tempfile.cat | awk '{print($6"_"$5)}'`
+				result_dir=$HOME/tempfile/result
+				GP_dir=`echo $result_dir"/"$temp_dir`
+				ipaddressname=`echo "ip_address_"$ID_MountCamara".dat"`
+				ip=`cat $ipaddressname | awk '{print($1)}'`
+				term_dir=`cat $ipaddressname | awk '{print($2)}'`
+				xautocopy_remote.f $GP_dir $ip  $term_dir
+				wait
+				xautocopy_remote.f $GP_dir/GPoint_catalog  $ip  $term_dir
+				wait
+				rm -rf Tempfile.cat newIdRADEC.cat $newfile
+			else
+				echo "No template files for this FOV and this Camera"
+				xmakenewtemp
+			fi
+		else
+			xmakenewtemp
+		fi
+	fi
+}
+
+checkimage ( )
+{ 
+	diff oldlist newlist | grep  ">" | tr -d '>' | column -t | head -1 >list
+	line=`cat list | wc -l`
+	if  [ "$line" -ne 0 ]
+	then 
+		cat list
+		newfile=`cat list`
+		sleep 5
+		du -a $newfile  >mass
+	        fitsMass=` cat mass | awk '{print($1)}'`	
+	        echo "fitsMass =" $fitsMass
+	#	until [  $fitsMass -gt 18248 ] 
+	#	do
+        #                xmaketemp $newfile
+	#		echo "@@@@@@@@"
+	#		du -a $newfile  >mass
+	#		fitsMass=` cat mass | awk '{print($1)}'`
+	#		echo "fitsMass =" $fitsMass
+	#	done
+		if [ "$fitsMass" -gt 18248 ]
+		#if [ "$fitsMass" -gt 36490 ]
+		#if [ "$fitsMass" -eq 36496 ]
+		then 
+			echo "@@@@@@@@"
+			sleep 3
+			xmaketemp $newfile
+		else	
+			sleep 5
+			xmaketemp $newfile
+		fi
+	else
+		break
+	fi
+}
+
+filelist=$HOME/gwacsoft/list6c
+dir_reduction=$HOME/reddir
+while :
+do
+        for dir_source in `cat $filelist`
+        do
+			cd $dir_source
+       		        if test -r oldlist
+                        then
+				rm -rf oldlist
+				touch oldlist
+        		else
+                		touch oldlist
+        		fi
+        		#echo $dir_source
+			date >reduct.log
+		        if test ! -r  *.fit
+        		then
+	                	echo `date` >redu.log
+        	        	#echo "No new images"
+                		continue
+        		else
+		                ls *.fit >newlist
+				echo "New images"
+                        	checkimage
+                		wait
+			fi
+        done
+done
+

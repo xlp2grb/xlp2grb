@@ -1,0 +1,80 @@
+#!/bin/bash
+DIR_data=`pwd`
+#inputfile=star1.cat
+inputfile=$1
+cp $inputfile inputstarlist.cat
+#outputfile=`echo $inputfile | sed 's/\.cat/.cat.output/'`
+#echo $outputfile
+#ls *tran2 >listtran2
+for FILE in `cat listtran2`
+do
+
+	FITFILEcat=$FILE
+	FITFILE=`echo $FITFILEcat | sed 's/\.tran2//'`
+	FITFILEn=`echo $FITFILEcat | sed 's/\.fit.tran2/e.fit/'`
+	echo "***************************"
+	ls $FITFILEcat >listtemptran2.temp 
+#	sleep 1
+	if test -r $FITFILEn
+	then
+		gethead $FITFILEn "jd" >obstimejd
+	else
+                dateobs=`gethead $FITFILE "DATE-OBS" | sed 's/T/ /' | awk '{print($1)}'`
+                timeobs=`gethead $FITFILE "DATE-OBS" | sed 's/T/ /' | awk '{print($2)}'`
+		sethead -nkr X DATE-OBS=$dateobs ut=$timeobs ra="00"  dec="00" epoch="2000" $FITFILE
+                cd $HOME/iraf
+                cp -f login.cl.old login.cl
+                echo noao >> login.cl
+                echo astutil >> login.cl
+                echo "cd $DIR_data" >> login.cl
+                echo "setjd(\"$FITFILEn\", date=\"DATE-OBS\",time=\"ut\")" >>login.cl
+                echo logout >> login.cl
+                cl < login.cl >xlogfile
+                cd $HOME/iraf
+                cp -f login.cl.old login.cl
+		cd $DIR_data
+		gethead $FITFILEn "jd" >obstimejd
+
+	fi
+#	cat obstimejd 
+	cat $FITFILEcat | grep -v '99.0000' > starinnewimg.lc.cat1
+	./xstarcrosslclist 
+
+done
+
+
+ls abc*.cat.output >listcatoutput
+for file in `cat listcatoutput`
+do
+Filename=$file
+xcoord=`cat $Filename | head -1 |  sed 's/abc/ /' | sed 's/_/ /' | sed 's/.cat.output/ /' | awk '{print($2)}'`
+ycoord=`cat $Filename | head -1 | sed 's/abc/ /' | sed 's/_/ /' | sed 's/.cat.output/ /' | awk '{print($3)}'`
+Rmag=`cat $Filename  | head -1 | sed 's/abc/ /' | sed 's/_/ /' | sed 's/.cat.output/ /' | awk '{print($4)}'`
+./xcctranXY2RaDec.sh $xcoord $ycoord >resxy2radec
+ra=`cat resxy2radec | awk '{print($5)}'`
+dec=`cat resxy2radec | awk '{print($6)}'`
+#cat $Filename | awk '{print($1-2456300,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$8-$14+$18)}' | sort -n -k 1 |  column -t >resfilenameoutput
+cat $Filename | awk '{print($1-2456300,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$11-$17+$21)}' | sort -n -k 1 |  column -t >resfilenameoutput
+
+#mv resfilenameoutput $Filename
+
+lcname=`echo "xlc_"$Filename".png"`
+sourcename=`echo $ra"_"$dec"_"$Rmag`
+gnuplot << EOF
+set term png
+set output "$lcname"
+set xlabel "jd-2456300 (days)"
+set ylabel "White mag collibrated by a comp star in USNOB1.0 Rmag"
+set title '$sourcename'
+set grid
+set yrange [] reverse
+plot "resfilenameoutput" u 1:22 w lp t ''
+EOF
+
+displayPadNum=`ps -all | awk '{if($14=="display") print($4)}'`
+kill -9 $displayPadNum
+display $lcname &
+sleep 0.3
+cp $lcname ../png
+done
+
