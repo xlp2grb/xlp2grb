@@ -58,17 +58,18 @@ xfwhmcalandsent ( )
  FITFILE=$2
  imagetmp3sd=$3
  OUTPUT_fwhm=$4
- fwhmmax=10
+ fwhmmax=10.0
  fwhmmin=1.2
-echo $imagetmp3sd
+echo $imagetmp3sd $OUTPUT_fwhm
  cat $imagetmp3sd | grep -v "#" | sed '/^$/d'| awk '{if($1>500 && $1<2500 && $2>500 && $2<2500) print($1,$2,"1 a")}'| column -t >newimageStandxy.db
  NstarForfwhm=`cat  newimageStandxy.db | wc -l | awk '{print($1)}'`
+echo $NstarForfwhm
  if [ $NstarForfwhm -lt $NstarForfwhmLimit ]
  then
          echo "The objects for fwhm in xFwhmCal_standmag.sh are too small: " $NstarForfwhm
          rm -rf newimageStandxy.db
  else
-	 cd $HOME/iraf
+	 cd $HOME/iraf2
 	 cp -f login.cl.old login.cl
 	 echo noao >> login.cl
 	 echo image >> login.cl

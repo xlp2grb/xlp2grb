@@ -265,8 +265,6 @@ xreTrack (  )
         echo "copy the combined image to the temp making computer" >>$stringtimeForMonitor
         ./xatcopy_remote.f $ipfile $FITFILE  $temp_ip $temp_dir"/"$ID_MountCamara
         wait
-
-        wait
         rm -rf xNomatch.flag
     else
         echo "The Num. of unmatched image are: "$Nnomatchimg
@@ -663,6 +661,10 @@ xlimitmagcal ( )
     ./xmaglimitcal
     averagelimit=`cat newimg_maglimit_result.cat | awk '{print($1)}'`
     echo "average for the" $maglimitSigma  " sigma limit R magnitude:" $averagelimit >>$stringtimeForMonitor
+    echo $averagelimit >>averagelimit.cat
+    cat -n averagelimit.cat >averagelimitCol.cat
+    gnuplot xplotLimitmag.gn &
+    
     #	sum=0
     #	for R2limitmag in `cat newimg_maglimit.cat | awk '{print($3)}'`
     #	do
@@ -1136,7 +1138,6 @@ xMountTrack ( )
     #For this part, it has not finished because it depends on the huanglei's code.
     #xaxis=decaxis
     #yaxis=raaxis
-    date
     ccdid=`gethead $FITFILE "CCDID"`
     case $ccdid in
         A | C | E | G | I | K )
@@ -1218,7 +1219,7 @@ xMountTrack ( )
     echo $RADECmsg_sky >listmsgforHuang.last.cat
     cat listmsgforHuang.last.cat >>$stringtimeForMonitor
     date
-    #./xsentshift & #sent the shift values to telescope controlers.  
+    ./xsentshift & #sent the shift values to telescope controlers.  
     #rm -rf listmsgforHuang.last.cat
     cat -n allxyshift.cat >allxyshift.cat.plot
     sh xtrack.sh $ID_MountCamara & 
@@ -1229,7 +1230,10 @@ xFWHMCalandFocus ( )
     #This part is to calculate the FWHM for those standard stars in the new image
     if test -s $tempstandmagstarFis
     then
+	echo "=======Have $tempstandmagstarFis==========="
         ./xFwhmCal_standmag.sh $DIR_data $FITFILE $tempstandmagstarFis $OUTPUT_fwhm & 
+     else
+	echo "=========NO $tempstandmagstarFis======="
     fi
 }
 
@@ -1300,9 +1304,12 @@ xSentFwhmAndTrack (  )
 {
     fwhmrespng=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_fwhm.png")}'`
     trackrespng=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_track.png")}'`
+    limitmagrespng=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_limitmag.png")}'`
     mv average_fwhm.png $fwhmrespng
     mv Track.png $trackrespng
-    ./xatcopy_remoteimg.f $fwhmrespng  $trackrespng 190.168.1.40 ~/webForFwhm &
+    mv Limitmag.png $limitmagrespng
+    ./xatcopy_remoteimg3.f $fwhmrespng  $trackrespng  $limitmagrespng 190.168.1.40 ~/webForFwhm &
+  #  ./xatcopy_remoteimg2.f $fwhmrespng  $trackrespng 190.168.1.40 ~/webForFwhm &
 #    ./xatcopy_remoteimg.f $trackrespng  190.168.1.40 ~/webForTrack  &
 }
 
@@ -1368,7 +1375,9 @@ do
     xcrossmatchwith2radius
     xCheckshiftResult  
     xcheckMatchResult
+    xMountTrack & 
     xcctranOT2image
+    xFWHMCalandFocus
     xcombineOTInformation
     xfilterBadpixel
     #xfilterBrightStars
@@ -1384,8 +1393,6 @@ do
     #	xplotandUploadOT	
     #	xdisplayOTandnewImg
     #====================	
-    xMountTrack  
-    xFWHMCalandFocus
     #xcut2otimg code is not used any more
     #xcut2otimg
     xCopyandbakResult		
