@@ -11,6 +11,7 @@
 #update the codes about the flux match for subimage
 #update the codes about the FWHM calculation for xFhmwCal.sh
 # modifed by xlp at 20130113
+#reduction time is reduced from 13 sec to 7 sec.
 #rm -rf listsky*
 DIR_data=`pwd`
 
@@ -1181,7 +1182,7 @@ xMountTrack ( )
             yshiftG=`echo $yshiftG | awk '{print(-1*$1)}'`
         fi
 
-        if [ `echo " $xshiftG > 0"  | bc ` -eq 1 ]
+        if [ ` echo " $xshiftG > 0"  | bc ` -eq 1 ]
         then
             echo "To south: new image relative to temp"
             DEC_guider=-
@@ -1217,9 +1218,10 @@ xMountTrack ( )
     echo $RADECmsg_sky >listmsgforHuang.last.cat
     cat listmsgforHuang.last.cat >>$stringtimeForMonitor
     date
-    ./xsentshift #sent the shift values to telescope controlers.  
+    #./xsentshift & #sent the shift values to telescope controlers.  
     #rm -rf listmsgforHuang.last.cat
-    ./xtrack.sh $ID_MountCamara
+    cat -n allxyshift.cat >allxyshift.cat.plot
+    sh xtrack.sh $ID_MountCamara & 
 }
 
 xFWHMCalandFocus ( )
@@ -1227,7 +1229,7 @@ xFWHMCalandFocus ( )
     #This part is to calculate the FWHM for those standard stars in the new image
     if test -s $tempstandmagstarFis
     then
-        ./xFwhmCal_standmag.sh $DIR_data $FITFILE $tempstandmagstarFis $OUTPUT_fwhm
+        ./xFwhmCal_standmag.sh $DIR_data $FITFILE $tempstandmagstarFis $OUTPUT_fwhm & 
     fi
 }
 
@@ -1300,8 +1302,8 @@ xSentFwhmAndTrack (  )
     trackrespng=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_track.png")}'`
     mv average_fwhm.png $fwhmrespng
     mv Track.png $trackrespng
-    ./xatcopy_remoteimg.f $fwhmrespng  190.168.1.40 ~/webForFwhm &
-    ./xatcopy_remoteimg.f $trackrespng  190.168.1.40 ~/webForTrack &
+    ./xatcopy_remoteimg.f $fwhmrespng  $trackrespng 190.168.1.40 ~/webForFwhm &
+#    ./xatcopy_remoteimg.f $trackrespng  190.168.1.40 ~/webForTrack  &
 }
 
 xcheckMatchResult (   )
@@ -1314,8 +1316,8 @@ xcheckMatchResult (   )
     if test -r noupdate.flag
     then
         echo "Have noupdate.flag"
-        ./xFwhmCal_noMatch.sh $DIR_data $FITFILE
-        xupdatetemp
+        ./xFwhmCal_noMatch.sh $DIR_data $FITFILE &
+        xupdatetemp   #to update the tempfile
     elif [ $NumOT_center -gt 30 ]
     then
         echo "class 1 OT is: " $NumOT_center
@@ -1323,9 +1325,9 @@ xcheckMatchResult (   )
         echo "no noupdate.flag but the ot num is:"$NumOT_center >>$stringtimeForMonitor
         ls $FITFILE >>xMissmatch.list
         mv newxyshift.cat.bak newxyshift.cat
-        ./xFwhmCal_noMatch.sh $DIR_data $FITFILE 
-        wait
-        continue
+        ./xFwhmCal_noMatch.sh $DIR_data $FITFILE  & 
+        #wait
+        continue  # The reduction of this image is not good enough, give up. 
     else
         :
     fi
@@ -1335,10 +1337,19 @@ xCheckshiftResult (  )
 {
     #there should add a code to check abs(xshiftcheck) or abs(yshiftcheck) are larger than 200, 
     #if lager, delete the newxyshift.cat 
-    #xshiftcheck=`tail -1 allxyshift.cat | awk '{print($1)}'`
-    #yshiftcheck=`tail -1 allxyshift.cat | awk '{print($2)}'`
-    cat allxyshift.cat | awk '{if($1>-200 && $1<200 && $2>-200 && $2<200)print($1,$2,$3)}' >allxyshift.cat.temp
-    mv allxyshift.cat.temp allxyshift.cat
+    if test ! -r newxyshift.cat
+    then
+        :
+    else
+        xshiftcheck=`cat newxyshift.cat | awk '{print($1)}'`
+        yshiftcheck=`cat newxyshift.cat | awk '{print($2)}'`
+         if [ ` echo " $xshiftcheck > 200 " | bc ` -eq 1 ] ||  [ ` echo "$xshiftcheck < -200 " | bc ` -eq 1 ] || [ ` echo " $yshiftcheck > 200 " | bc ` -eq 1 ] ||  [ ` echo "$yshiftcheck < -200 " | bc ` -eq 1 ]        
+        then
+            rm -rf newxyshift.cat
+            cat allxyshift.cat | awk '{if($1>-200 && $1<200 && $2>-200 && $2<200)print($1,$2,$3)}' >allxyshift.cat.temp
+            mv allxyshift.cat.temp allxyshift.cat
+        fi
+    fi
 }
 
 
@@ -1355,27 +1366,25 @@ do
     xfluxcalibration	
     xlimitmagcal
     xcrossmatchwith2radius
-    xCheckshiftResult     
+    xCheckshiftResult  
     xcheckMatchResult
     xcctranOT2image
     xcombineOTInformation
     xfilterBadpixel
-    #	xfilterBrightStars
+    #xfilterBrightStars
     xfilterPSF
     #====================
     #might not be used 
     #modified by xlp at 20140901
     xfilterCV
     xfilterBrightbg
-
     xOnlyUploadOT
     xgetkeyWords
-
     #	xget2sdOT
     #	xplotandUploadOT	
     #	xdisplayOTandnewImg
     #====================	
-    xMountTrack
+    xMountTrack  
     xFWHMCalandFocus
     #xcut2otimg code is not used any more
     #xcut2otimg
@@ -1383,11 +1392,6 @@ do
     #xbakresult
     xInforMonitor
     xSentFwhmAndTrack
-    #	date
     xtimeCal
-    #	date "+%H %M %S" >time_redu1
-    #	time_need=`cat time_redu_f time_redu1 | tr '\n' ' ' | awk '{print(($4-$1)*3600+($5-$2)*60+($6-$3))}'`
-    #	echo "All were done in  $time_need sec"
-    #	echo `date -u +%T` $timeobs $FITFILE $time_need >>$stringtimeForReduc
 
 done

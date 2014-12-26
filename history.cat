@@ -1,0 +1,50 @@
+  756  ls
+  757  vi xlot6cOnline.sh
+  758  cp xlot6cOnline.sh xlot6cOnline.sh.bak.20141224.xlp
+  759  scp gwac@190.168.1.40:~/gwacsoft/xlot6cOnline.sh ./
+  760  vi xlot6cOnline.sh
+  761  scp xlot6cOnline.sh gwac@190.168.1.40:~/gwacsoft
+  762  exit
+  763  ls
+  764  ssh gwac@190.168.1.40
+  765  exit
+  766  ls
+  767  cp xlot6cOnline.sh gwac@190.168.1.40:~/gwacsoft
+  768  scp xlot6cOnline.sh gwac@190.168.1.40:~/gwacsoft
+  769  ping 190.168.1.40
+  770  ping 190.168.1.13
+  771  scp xlot6cOnline.sh gwac@190.168.1.40:~/gwacsoft
+  772  exit
+  773  ssh gwac@190.168.1.40
+  774  exit
+  775  ssh gwac@190.168.1.13
+  776  exit
+  777  ssh gwac@192.168.160.116
+  778  cd
+  779  ls
+  780  sudo yum install git
+  781  ls
+  782  cd soft_xlp/
+  783  ls
+  784  cd newxgwacmatchsoft/
+  785  ls
+  786  git init
+  787  git
+  788  git add .
+  789  git commit -m 'first commit'
+  790  git diff
+  791  git remote add origin https://github.com/xlp2grb.git
+  792  git remote add origin https://github.com/xlp2grb/xlp2grb.git
+  793  git remote remove origin
+  794  git remote add origin https://github.com/xlp2grb/xlp2grb.git
+  795  git push origin master
+  796  ls
+  797  vi xmatch.sh
+  798  git diff
+  799  vi xmatch.sh
+  800  git diff
+  801  git log
+  802  git commit -m 'second'
+  803  history 100
+  804* git pull origin  master 
+  805  history 50 >history.cat
