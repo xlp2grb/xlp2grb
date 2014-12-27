@@ -71,7 +71,7 @@ then
 	echo "The objects for fwhm in noMatch.sh are too small, only: " $NstarForfwhm
 	rm -rf newimageStandxy.db
 else
-	cd $HOME/iraf
+	cd $HOME/iraf2
 	cp -f login.cl.old login.cl
 	echo noao >> login.cl
 	echo image >> login.cl

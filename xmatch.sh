@@ -270,7 +270,8 @@ xreTrack (  )
         echo "The Num. of unmatched image are: "$Nnomatchimg
     fi
     rm -rf $allfile
-    ./xFwhmCal_noMatch.sh $DIR_data $FITFILE
+    ./xFwhmCal_noMatch.sh $DIR_data $FITFILE 
+    echo $xrms $yrms >>allxyrms.cat 
     xtimeCal
     break
 }
@@ -479,12 +480,12 @@ xmatchimgtemp ( )
                 else
                     echo $FITFILE `cat newxyshift.cat` `cat $imagetrans3sd | grep "rms"` "3times" >>list_matchmatss
                     touch deletenewxyshift.cat
-                    xreTrack
                     tail -1 list_matchmatss >>$stringtimeForMonitor
                     echo "rms is too much larger,image match faild"
-                    ./xFwhmCal_noMatch.sh $DIR_data $FITFILE
-                    xtimeCal
-                    break
+                    xreTrack
+                    #./xFwhmCal_noMatch.sh $DIR_data $FITFILE
+                    #xtimeCal
+                    #break
 
                     rm -rf $allfile
                 fi
@@ -1222,7 +1223,11 @@ xMountTrack ( )
     ./xsentshift & #sent the shift values to telescope controlers.  
     #rm -rf listmsgforHuang.last.cat
     cat -n allxyshift.cat >allxyshift.cat.plot
-    sh xtrack.sh $ID_MountCamara & 
+    #sh xtrack.sh $ID_MountCamara & 
+
+    echo $xrms $yrms >>allxyrms.cat
+    cat -n allxyrms.cat >allxyrms.cat.plot
+    sh xtrackrms.sh $ID_MountCamara &
 }
 
 xFWHMCalandFocus ( )
@@ -1230,10 +1235,10 @@ xFWHMCalandFocus ( )
     #This part is to calculate the FWHM for those standard stars in the new image
     if test -s $tempstandmagstarFis
     then
-	echo "=======Have $tempstandmagstarFis==========="
+	 echo "=======Have $tempstandmagstarFis==========="
         ./xFwhmCal_standmag.sh $DIR_data $FITFILE $tempstandmagstarFis $OUTPUT_fwhm & 
      else
-	echo "=========NO $tempstandmagstarFis======="
+	    echo "=========NO $tempstandmagstarFis======="
     fi
 }
 
@@ -1305,10 +1310,14 @@ xSentFwhmAndTrack (  )
     fwhmrespng=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_fwhm.png")}'`
     trackrespng=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_track.png")}'`
     limitmagrespng=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_limitmag.png")}'`
+    rmsrespng=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_xyrms.png")}'`
     mv average_fwhm.png $fwhmrespng
     mv Track.png $trackrespng
     mv Limitmag.png $limitmagrespng
-    ./xatcopy_remoteimg3.f $fwhmrespng  $trackrespng  $limitmagrespng 190.168.1.40 ~/webForFwhm &
+    mv Trackrms.png $rmsrespng
+    wait
+    ./xatcopy_remoteimg4.f $fwhmrespng  $trackrespng  $limitmagrespng $rmsrespng 190.168.1.40 ~/webForFwhm &
+    #./xatcopy_remoteimg3.f $fwhmrespng  $trackrespng  $limitmagrespng 190.168.1.40 ~/webForFwhm &
   #  ./xatcopy_remoteimg2.f $fwhmrespng  $trackrespng 190.168.1.40 ~/webForFwhm &
 #    ./xatcopy_remoteimg.f $trackrespng  190.168.1.40 ~/webForTrack  &
 }
