@@ -26,6 +26,8 @@ sub_dir=/data2/workspace/redufile/subfile/
 lc_dir=/data2/workspace/redufile/getlc
 Dir_temp=/data2/workspace/tempfile/result
 trimsubimage_dir=/data2/workspace/redufile/trimsubimage
+temp_dir=/home/gwac/newfile
+temp_ip=`echo 190.168.1.40` #(ip for temp builder at xinglong)
 Alltemplatetable=refcom3d.cat
 #cat $Alltemplatetable | sed '/^$/d'  >new1
 #mv new1 $Alltemplatetable
@@ -252,6 +254,7 @@ xreTrack (  )
     Nnomatchimg=`cat xNomatch.flag | wc -l | awk '{print($1)}'`
     if [  $Nnomatchimg -gt 10   ]
     then
+	echo "====To do the the reTrack===="
         #sethead -kr X TODO=ReTrack $FITFILE
         #	mkdir xNomatch_lot6c2.py.flag
         RaTemp=`gethead $tempfile "RaTemp"` 
@@ -259,6 +262,7 @@ xreTrack (  )
         #get the RA and DEC in the head of refcom.fit. The two keywords are the real pointing of FoV of the image, which was calculated by lot6c2.py and restorted in the *cencc1, and then rewrited into the head of refcom.fit
         sethead -kr X TODO=ReTrack RaTemp=$RaTemp DecTemp=$DecTemp $FITFILE 
         #xatcopy_reTrack.f $FITFILE
+	    ID_MountCamara=`gethead $FITFILE "IMAGEID"  | cut -c14-17`
         ipadress=`ifconfig | grep "inet" |  awk '{if($5=="broadcast")print($2)}'`
         ipfile=`echo "ip_address_"$ID_MountCamara".dat"`
         echo $ipadress $Dir_temp >$ipfile
@@ -1384,6 +1388,7 @@ do
     xcrossmatchwith2radius
     xCheckshiftResult  
     xcheckMatchResult
+    xgetkeyWords
     xMountTrack & 
     xcctranOT2image
     xFWHMCalandFocus
@@ -1397,7 +1402,6 @@ do
     xfilterCV
     xfilterBrightbg
     xOnlyUploadOT
-    xgetkeyWords
     #	xget2sdOT
     #	xplotandUploadOT	
     #	xdisplayOTandnewImg
