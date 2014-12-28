@@ -201,6 +201,20 @@ xfits2jpg ( )
 
 xSentObjAndBg (  )
 {
+    echo "Star num. is : " $NStar_ini
+    rm -rf newbgbrightres.cat
+    cp $OUTPUT_ini newbgbright.cat
+    ./xavbgbright 
+    wait
+    if test ! -r newbgbrightres.cat
+    then
+        echo "no result of bg brightness"
+        continue
+    else
+        bgbrightness=`cat newbgbrightres.cat | awk '{printf("%.0f\n", $1)}'`
+        echo "bg brightness is : " $bgbrightness
+        echo $NStar_ini $bgbrightness $FITFILE >>allxyObjNumAndBgBright.cat
+    fi    
 
     echo "=====to plot the obj and bg brightness ====="
     cat -n allxyObjNumAndBgBright.cat >allxyObjNumAndBgBright.cat.plot
@@ -224,6 +238,8 @@ xgetstars ()
     sex $FITFILE  -c  xmatchdaofind.sex -DETECT_THRESH 5.0 -ANALYSIS_THRESH 5.0 -CATALOG_NAME $OUTPUT_ini -CHECKIMAGE_TYPE BACKGROUND -CHECKIMAGE_NAME $bg
     wc $OUTPUT_ini | awk '{print("Star_num  " $1)}' >>list_matchmatss
     wc $OUTPUT_ini | awk '{print("Star_num  " $1)}' >>$stringtimeForMonitor	
+    NStar_ini=`cat $OUTPUT_ini | wc -l | awk '{printf("%.0f\n", $1)}'`
+    bgbrightness=`head -1 $OUTPUT_ini | awk '{printf("%.0f\n",$5)}'`
     cd $HOME/iraf
     cp -f login.cl.old login.cl
     echo noao >> login.cl
@@ -239,12 +255,8 @@ xgetstars ()
     cd $DIR_data	
     rm -rf $bg
     xfits2jpg &
-    NStar_ini=`cat $OUTPUT_ini | wc -l | awk '{print($1)}'`
-    echo "Star num. is : " $NStar_ini
-    bgbrightness=`head -1 $OUTPUT_ini | awk '{printf("%.0f\n",$5)}'`
-    echo "Background brightness: " $bgbrightness
-    echo $NStar_ini $bgbrightness $FITFILE >>allxyObjNumAndBgBright.cat
     xSentObjAndBg &
+    #echo "Background brightness: " $bgbrightness
     if [ $NStar_ini -lt $Nstar_ini_limit ]
     then
         echo "Star num. is only: " $NStar_ini ", break" >>$stringtimeForMonitor
