@@ -26,8 +26,6 @@ sub_dir=/data2/workspace/redufile/subfile/
 lc_dir=/data2/workspace/redufile/getlc
 Dir_temp=/data2/workspace/tempfile/result
 trimsubimage_dir=/data2/workspace/redufile/trimsubimage
-temp_dir=/home/gwac/newfile
-temp_ip=`echo 190.168.1.40` #(ip for temp builder at xinglong)
 Alltemplatetable=refcom3d.cat
 #cat $Alltemplatetable | sed '/^$/d'  >new1
 #mv new1 $Alltemplatetable
@@ -67,6 +65,13 @@ xtimeCal ( )
     timeobs=`gethead $FITFILE "T-OBS-UT"`
     date "+%H %M %S" >time_redu1
     time_need=`cat time_redu_f time_redu1 | tr '\n' ' ' | awk '{print(($4-$1)*3600+($5-$2)*60+($6-$3))}'`
+    echo $time_need $FITFILE >>allxytimeNeed.cat
+    cat -n allxytimeNeed.cat >allxytimeNeed.cat.plot
+    sh xplottimeneed.sh $ID_MountCamara  
+    wait 
+    timeneedrespng=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_timeneed.png")}'`
+    mv Timeneed.png $timeneedrespng
+    ./xatcopy_remoteimg.f $timeneedrespng  190.168.1.40 ~/webForFwhm  &
     echo "All were done in  $time_need sec"
     echo `date -u +%T` $timeobs $FITFILE $time_need >>$stringtimeForReduc
 }
@@ -190,6 +195,26 @@ xfits2jpg ( )
     rm -rf $ccdimgjpg
 }
 
+xSentObjAndBg (  )
+{
+
+    echo "=====to plot the obj and bg brightness ====="
+    cat -n allxyObjNumAndBgBright.cat >allxyObjNumAndBgBright.cat.plot
+    sh xplotobjAndBg.sh $ID_MountCamara $Nstar_ini_limit $Nbgbright_ini_uplimit 
+    wait
+    objnumrespng=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_objnum.png")}'`
+    bgbrightrespng=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_bgbright.png")}'`
+    mv objnum.png $objnumrespng
+    mv bgbright.png $bgbrightrespng
+    #    ./xatcopy_remoteimg4.f $fwhmrespng  $trackrespng  $limitmagrespng $rmsrespng 190.168.1.40 ~/webForFwhm &
+    #./xatcopy_remoteimg3.f $fwhmrespng  $trackrespng  $limitmagrespng 190.168.1.40 ~/webForFwhm &
+    ./xatcopy_remoteimg2.f $objnumrespng  $bgbrightrespng 190.168.1.40 ~/webForFwhm &
+    #    ./xatcopy_remoteimg.f $trackrespng  190.168.1.40 ~/webForTrack  &
+
+
+}
+
+
 xgetstars ()
 {
     sex $FITFILE  -c  xmatchdaofind.sex -DETECT_THRESH 5.0 -ANALYSIS_THRESH 5.0 -CATALOG_NAME $OUTPUT_ini -CHECKIMAGE_TYPE BACKGROUND -CHECKIMAGE_NAME $bg
@@ -211,9 +236,13 @@ xgetstars ()
     rm -rf $bg
     xfits2jpg &
     NStar_ini=`cat $OUTPUT_ini | wc -l | awk '{print($1)}'`
+    echo "Star num. is : " $NStar_ini
+    bgbrightness=`head -1 $OUTPUT_ini | awk '{printf("%.0f\n",$5)}'`
+    echo "Background brightness: " $bgbrightness
+    echo $NStar_ini $bgbrightness $FITFILE >>allxyObjNumAndBgBright.cat
+    xSentObjAndBg &
     if [ $NStar_ini -lt $Nstar_ini_limit ]
     then
-        echo "Star num. is only: " $NStar_ini
         echo "Star num. is only: " $NStar_ini ", break" >>$stringtimeForMonitor
         ls $FITFILE >>xMissmatch.list
         #	if [ $NStar_ini -lt 3000 ] # cloudy or sunrise, moon phase
@@ -227,8 +256,6 @@ xgetstars ()
         #        	break
         #	fi
     else 
-        bgbrightness=`head -1 $OUTPUT_ini | awk '{printf("%.0f\n",$5)}'`
-        echo "Background brightness: " $bgbrightness
         if [ $bgbrightness -gt $Nbgbright_ini_uplimit ] #if the brightness of background is too high, This image shall not reduced and no output for the FWHM
         then
             echo "Background is too brightness: " $bgbrightness
@@ -251,10 +278,10 @@ xgetstars ()
 xreTrack (  )
 {
     ls $FITFILE >>xNomatch.flag
+    ./xFwhmCal_noMatch.sh $DIR_data $FITFILE & 
     Nnomatchimg=`cat xNomatch.flag | wc -l | awk '{print($1)}'`
     if [  $Nnomatchimg -gt 10   ]
     then
-	echo "====To do the the reTrack===="
         #sethead -kr X TODO=ReTrack $FITFILE
         #	mkdir xNomatch_lot6c2.py.flag
         RaTemp=`gethead $tempfile "RaTemp"` 
@@ -262,7 +289,6 @@ xreTrack (  )
         #get the RA and DEC in the head of refcom.fit. The two keywords are the real pointing of FoV of the image, which was calculated by lot6c2.py and restorted in the *cencc1, and then rewrited into the head of refcom.fit
         sethead -kr X TODO=ReTrack RaTemp=$RaTemp DecTemp=$DecTemp $FITFILE 
         #xatcopy_reTrack.f $FITFILE
-	    ID_MountCamara=`gethead $FITFILE "IMAGEID"  | cut -c14-17`
         ipadress=`ifconfig | grep "inet" |  awk '{if($5=="broadcast")print($2)}'`
         ipfile=`echo "ip_address_"$ID_MountCamara".dat"`
         echo $ipadress $Dir_temp >$ipfile
@@ -274,12 +300,25 @@ xreTrack (  )
         echo "The Num. of unmatched image are: "$Nnomatchimg
     fi
     rm -rf $allfile
-    ./xFwhmCal_noMatch.sh $DIR_data $FITFILE 
-    echo $xrms $yrms >>allxyrms.cat 
+    echo $xxshift $yyshift $FITFILE >>allxyshift.cat 
+    echo $xrms $yrms $FITFILE >>allxyrms.cat 
     xtimeCal
     break
 }
 
+xmatchimgtempFailed (  )
+{
+
+    touch deletenewxyshift.cat
+    tail -1 list_matchmatss >>$stringtimeForMonitor
+    echo "rms is too much larger,image match faild"
+    xreTrack
+    #./xFwhmCal_noMatch.sh $DIR_data $FITFILE
+    #xtimeCal
+    #break
+    rm -rf $allfile
+
+}
 
 
 xmatchimgtemp ( )
@@ -338,6 +377,10 @@ xmatchimgtemp ( )
     cd $HOME/iraf
     cp -f login.cl.old login.cl
     cd $DIR_data
+    xrms=`cat $imagetrans3sd | grep "xrms" | awk '{print($2)}'`
+    yrms=`cat $imagetrans3sd | grep "yrms" | awk '{print($2)}'`
+    xxshift=`cat $imagetrans3sd | grep "xshift" | awk '{print($2)}'`
+    yyshift=`cat $imagetrans3sd | grep "yshift" | awk '{print($2)}'`
     if test -r $imagetrans3sd
     then
         #		echo "First xyxymatch with tolerance is finished!"
@@ -385,9 +428,19 @@ xmatchimgtemp ( )
             #		        mv mattmp $imagetmp1sd
             #		        mv transform.db $imagetrans1sd
             echo "for imagetrans1sd,rms:"
-            xrms1=`cat $imagetrans1sd | grep "xrms" | awk '{print($2)}'`
-            yrms1=`cat $imagetrans1sd | grep "yrms" | awk '{print($2)}'`
-            echo $xrms1 $yrms1
+            xrms=`cat $imagetrans1sd | grep "xrms" | awk '{print($2)}'`
+            yrms=`cat $imagetrans1sd | grep "yrms" | awk '{print($2)}'`
+            xxshift=`cat $imagetrans1sd | grep "xshift" | awk '{print($2)}'`
+            yyshift=`cat $imagetrans1sd | grep "yshift" | awk '{print($2)}'`
+            echo $xrms $yrms
+            #=============================
+            if [ ` echo " $xrms > 5 " | bc ` -eq 1  ] || [ ` echo " $yrms > 5 " | bc ` -eq 1  ]  # if not good enough
+            then
+                echo "rms after triangle match is too much, this image will be given up."
+                echo $FITFILE `cat newxyshift.cat` `cat $imagetrans3sd | grep "rms"` "2times" >>list_matchmatss
+                xmatchimgtempFailed
+            fi
+            #==============================
             rm -rf $OUTPUT_new
             cat $OUTPUT_geoxytran1 | awk '{if(($3-$5)/$6>20) print($1,$2,$3,$4,$5,$6,$7)}' | column -t >allres0
             Nbstar=30
@@ -404,7 +457,7 @@ xmatchimgtemp ( )
             matchflag=tolerance
             tempmatchstars=GwacStandall.cat
             fitorder=4
-            toleranceradius=`echo $rms1 $yrms1 | awk '{print(50*($1+$2))}'`	
+            toleranceradius=`echo $xrms $yrms | awk '{print(50*($1+$2))}'`	
             echo $toleranceradius
             rm -rf $imagetmp3sd $OUTPUT_geoxytran3
             cp $OUTPUT_new testnew.dat
@@ -479,19 +532,12 @@ xmatchimgtemp ( )
                     echo $FITFILE `cat newxyshift.cat` `cat $imagetrans3sd | grep "rms"` "3times" >>list_matchmatss
                     tail -1 list_matchmatss >>$stringtimeForMonitor
                     echo $xxshift $yyshift $FITFILE >>allxyshift.cat
+                    echo $xrms $yrms $FITFILE >>allxyrms.cat
                     rm -rf xNomatch.flag 
                     #	rm xNomatch_lot6c2.py.flag
                 else
                     echo $FITFILE `cat newxyshift.cat` `cat $imagetrans3sd | grep "rms"` "3times" >>list_matchmatss
-                    touch deletenewxyshift.cat
-                    tail -1 list_matchmatss >>$stringtimeForMonitor
-                    echo "rms is too much larger,image match faild"
-                    xreTrack
-                    #./xFwhmCal_noMatch.sh $DIR_data $FITFILE
-                    #xtimeCal
-                    #break
-
-                    rm -rf $allfile
+                    xmatchimgtempFailed 
                 fi
             else
                 echo "No $imagetrans3sd created for the third match"
@@ -524,6 +570,7 @@ xmatchimgtemp ( )
             echo $FITFILE `cat newxyshift.cat` `cat $imagetrans3sd | grep "rms"` "1times" >>list_matchmatss
             tail -1 list_matchmatss >>$stringtimeForMonitor
             echo $xxshift $yyshift $FITFILE >>allxyshift.cat
+            echo $xrms $yrms $FITFILE >>allxyrms.cat
         fi
     else
 
@@ -669,7 +716,7 @@ xlimitmagcal ( )
     echo $averagelimit >>averagelimit.cat
     cat -n averagelimit.cat >averagelimitCol.cat
     gnuplot xplotLimitmag.gn &
-    
+
     #	sum=0
     #	for R2limitmag in `cat newimg_maglimit.cat | awk '{print($3)}'`
     #	do
@@ -1212,6 +1259,7 @@ xMountTrack ( )
     xshiftG_sky=`echo $xshiftG $pixelscale | awk '{printf("%04d\n",$1*$2)}'` # dec axis no any projection relative to the mount point (DEC)
     yshiftG_sky=`echo $yshiftG $deltapixel | awk '{printf("%04d\n",$1*$2)}'` # ra axis 
     #echo $RA_guider $yshiftG $DEC_guider $xshiftG
+    IDccdNum=`echo $FITFILE | cut -c4-5`
     RADECmsg_sky_tmp=`echo "d#"$IDccdNum"bias"$RA_guider$yshiftG_sky$DEC_guider$xshiftG_sky`
     datestring=`gethead $FITFILE "date-obs"  | sed 's/-//g' | cut -c3-8`
     timestring=`gethead $FITFILE "time-obs"  | sed 's/://g' | cut -c1-6`
@@ -1229,7 +1277,6 @@ xMountTrack ( )
     cat -n allxyshift.cat >allxyshift.cat.plot
     #sh xtrack.sh $ID_MountCamara & 
 
-    echo $xrms $yrms >>allxyrms.cat
     cat -n allxyrms.cat >allxyrms.cat.plot
     sh xtrackrms.sh $ID_MountCamara &
 }
@@ -1239,10 +1286,10 @@ xFWHMCalandFocus ( )
     #This part is to calculate the FWHM for those standard stars in the new image
     if test -s $tempstandmagstarFis
     then
-	 echo "=======Have $tempstandmagstarFis==========="
+        echo "=======Have $tempstandmagstarFis==========="
         ./xFwhmCal_standmag.sh $DIR_data $FITFILE $tempstandmagstarFis $OUTPUT_fwhm & 
-     else
-	    echo "=========NO $tempstandmagstarFis======="
+    else
+        echo "=========NO $tempstandmagstarFis======="
     fi
 }
 
@@ -1322,8 +1369,9 @@ xSentFwhmAndTrack (  )
     wait
     ./xatcopy_remoteimg4.f $fwhmrespng  $trackrespng  $limitmagrespng $rmsrespng 190.168.1.40 ~/webForFwhm &
     #./xatcopy_remoteimg3.f $fwhmrespng  $trackrespng  $limitmagrespng 190.168.1.40 ~/webForFwhm &
-  #  ./xatcopy_remoteimg2.f $fwhmrespng  $trackrespng 190.168.1.40 ~/webForFwhm &
-#    ./xatcopy_remoteimg.f $trackrespng  190.168.1.40 ~/webForTrack  &
+    #  ./xatcopy_remoteimg2.f $fwhmrespng  $trackrespng 190.168.1.40 ~/webForFwhm &
+    #    ./xatcopy_remoteimg.f $trackrespng  190.168.1.40 ~/webForTrack  &
+
 }
 
 xcheckMatchResult (   )
@@ -1363,7 +1411,7 @@ xCheckshiftResult (  )
     else
         xshiftcheck=`cat newxyshift.cat | awk '{print($1)}'`
         yshiftcheck=`cat newxyshift.cat | awk '{print($2)}'`
-         if [ ` echo " $xshiftcheck > 200 " | bc ` -eq 1 ] ||  [ ` echo "$xshiftcheck < -200 " | bc ` -eq 1 ] || [ ` echo " $yshiftcheck > 200 " | bc ` -eq 1 ] ||  [ ` echo "$yshiftcheck < -200 " | bc ` -eq 1 ]        
+        if [ ` echo " $xshiftcheck > 200 " | bc ` -eq 1 ] ||  [ ` echo "$xshiftcheck < -200 " | bc ` -eq 1 ] || [ ` echo " $yshiftcheck > 200 " | bc ` -eq 1 ] ||  [ ` echo "$yshiftcheck < -200 " | bc ` -eq 1 ]        
         then
             rm -rf newxyshift.cat
             cat allxyshift.cat | awk '{if($1>-200 && $1<200 && $2>-200 && $2<200)print($1,$2,$3)}' >allxyshift.cat.temp
@@ -1380,6 +1428,7 @@ do
     xdeleteBeforeresult
     xchangehe
     xprereduction
+    xgetkeyWords
     xgetstars
     xmatchimgtemp
     #xplotxyxymatchresult
@@ -1388,7 +1437,6 @@ do
     xcrossmatchwith2radius
     xCheckshiftResult  
     xcheckMatchResult
-    xgetkeyWords
     xMountTrack & 
     xcctranOT2image
     xFWHMCalandFocus
@@ -1402,6 +1450,7 @@ do
     xfilterCV
     xfilterBrightbg
     xOnlyUploadOT
+    xSentFwhmAndTrack
     #	xget2sdOT
     #	xplotandUploadOT	
     #	xdisplayOTandnewImg
@@ -1411,7 +1460,6 @@ do
     xCopyandbakResult		
     #xbakresult
     xInforMonitor
-    xSentFwhmAndTrack
     xtimeCal
 
 done
