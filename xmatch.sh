@@ -27,6 +27,10 @@ lc_dir=/data2/workspace/redufile/getlc
 Dir_temp=/data2/workspace/tempfile/result
 trimsubimage_dir=/data2/workspace/redufile/trimsubimage
 Alltemplatetable=refcom3d.cat
+temp_dir=/home/gwac/newfile
+temp_ip=`echo 190.168.1.40` #(ip for temp builder at xinglong)
+IPforMonitorAndTemp=`echo 190.168.1.40`
+Dir_IPforMonitorAndTemp=/home/gwac/webForFwhm
 #cat $Alltemplatetable | sed '/^$/d'  >new1
 #mv new1 $Alltemplatetable
 AlltemplatetableForVariable=refcom4d.cat
@@ -71,7 +75,7 @@ xtimeCal ( )
     wait 
     timeneedrespng=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_timeneed.png")}'`
     mv Timeneed.png $timeneedrespng
-    ./xatcopy_remoteimg.f $timeneedrespng  190.168.1.40 ~/webForFwhm  &
+    ./xatcopy_remoteimg.f $timeneedrespng  $IPforMonitorAndTemp $Dir_IPforMonitorAndTemp  &
     echo "All were done in  $time_need sec"
     echo `date -u +%T` $timeobs $FITFILE $time_need >>$stringtimeForReduc
 }
@@ -190,7 +194,7 @@ xfits2jpg ( )
     python fits_cut_to_png.py $FITFILE_subbg $ccdimgjpg 1528 1528 1528 "" &
     wait
     curl http://190.168.1.25/realTimeOtDstImageUpload  -F fileUpload=@$ccdimgjpg
-    #./xatcopy_remoteimg.f $ccdimgjpg 190.168.1.40 ~/web &
+    #./xatcopy_remoteimg.f $ccdimgjpg $IPforMonitorAndTemp ~/web &
     wait
     rm -rf $ccdimgjpg
 }
@@ -206,10 +210,10 @@ xSentObjAndBg (  )
     bgbrightrespng=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_bgbright.png")}'`
     mv objnum.png $objnumrespng
     mv bgbright.png $bgbrightrespng
-    #    ./xatcopy_remoteimg4.f $fwhmrespng  $trackrespng  $limitmagrespng $rmsrespng 190.168.1.40 ~/webForFwhm &
-    #./xatcopy_remoteimg3.f $fwhmrespng  $trackrespng  $limitmagrespng 190.168.1.40 ~/webForFwhm &
-    ./xatcopy_remoteimg2.f $objnumrespng  $bgbrightrespng 190.168.1.40 ~/webForFwhm &
-    #    ./xatcopy_remoteimg.f $trackrespng  190.168.1.40 ~/webForTrack  &
+    #    ./xatcopy_remoteimg4.f $fwhmrespng  $trackrespng  $limitmagrespng $rmsrespng $IPforMonitorAndTemp $Dir_IPforMonitorAndTemp &
+    #./xatcopy_remoteimg3.f $fwhmrespng  $trackrespng  $limitmagrespng $IPforMonitorAndTemp $Dir_IPforMonitorAndTemp &
+    ./xatcopy_remoteimg2.f $objnumrespng  $bgbrightrespng $IPforMonitorAndTemp $Dir_IPforMonitorAndTemp &
+    #    ./xatcopy_remoteimg.f $trackrespng  $IPforMonitorAndTemp ~/webForTrack  &
 
 
 }
@@ -293,7 +297,7 @@ xreTrack (  )
         ipfile=`echo "ip_address_"$ID_MountCamara".dat"`
         echo $ipadress $Dir_temp >$ipfile
         echo "copy the combined image to the temp making computer" >>$stringtimeForMonitor
-        ./xatcopy_remote.f $ipfile $FITFILE  $temp_ip $temp_dir"/"$ID_MountCamara
+        ./xatcopy_remoteimg2.f $ipfile $FITFILE  $temp_ip $temp_dir"/"$ID_MountCamara
         wait
         rm -rf xNomatch.flag
     else
@@ -1367,10 +1371,10 @@ xSentFwhmAndTrack (  )
     mv Limitmag.png $limitmagrespng
     mv Trackrms.png $rmsrespng
     wait
-    ./xatcopy_remoteimg4.f $fwhmrespng  $trackrespng  $limitmagrespng $rmsrespng 190.168.1.40 ~/webForFwhm &
-    #./xatcopy_remoteimg3.f $fwhmrespng  $trackrespng  $limitmagrespng 190.168.1.40 ~/webForFwhm &
-    #  ./xatcopy_remoteimg2.f $fwhmrespng  $trackrespng 190.168.1.40 ~/webForFwhm &
-    #    ./xatcopy_remoteimg.f $trackrespng  190.168.1.40 ~/webForTrack  &
+    ./xatcopy_remoteimg4.f $fwhmrespng  $trackrespng  $limitmagrespng $rmsrespng $IPforMonitorAndTemp $Dir_IPforMonitorAndTemp &
+    #./xatcopy_remoteimg3.f $fwhmrespng  $trackrespng  $limitmagrespng $IPforMonitorAndTemp $Dir_IPforMonitorAndTemp &
+    #  ./xatcopy_remoteimg2.f $fwhmrespng  $trackrespng $IPforMonitorAndTemp $Dir_IPforMonitorAndTemp &
+    #    ./xatcopy_remoteimg.f $trackrespng  $IPforMonitorAndTemp ~/webForTrack  &
 
 }
 
