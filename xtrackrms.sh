@@ -1,5 +1,8 @@
 echo "to plot the track and rms plot"
-titlefile=$1
+titlefileCCD=$1
+timenow=`date -u +%Y%m%d%H%M%S`
+titlefile=`echo $titlefileCCD"_"$timenow`
+                                            
 trackpngfile=Track.png
 rmspngfile=Trackrms.png
 gnuplot << EOF

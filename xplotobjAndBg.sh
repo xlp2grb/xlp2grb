@@ -1,5 +1,8 @@
 echo "to plot the obj num and bg bright plot"
-titlefile=$1
+titlefileCCD=$1
+timenow=`date -u +%Y%m%d%H%M%S`
+titlefile=`echo $titlefileCCD"_"$timenow`
+                                            
 objlimit=$2
 bgbrightlimit=$3
 objnumpngfile=objnum.png

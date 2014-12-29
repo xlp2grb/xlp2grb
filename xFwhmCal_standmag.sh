@@ -45,7 +45,9 @@ xfwhmcalandsent ( )
 
         #displayPadNum=`ps -all | awk '{if($14=="display") print($4)}'`
         #kill -9 $displayPadNum
-        gnuplot plot.fwhm.gn
+        ID_MountCamara=`gethead $FITFILE "IMAGEID"  | cut -c14-17`
+        sh xplotfwhm.sh $ID_MountCamara
+        #gnuplot plot.fwhm.gn
 #        display average_fwhm.png &
         else
                 echo "No fwhm_lastdata for this image"

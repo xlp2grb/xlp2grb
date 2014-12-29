@@ -233,7 +233,7 @@ xSentObjAndBg (  )
 }
 
 
-xgetstars ()
+xgetstars (  )
 {
     sex $FITFILE  -c  xmatchdaofind.sex -DETECT_THRESH 5.0 -ANALYSIS_THRESH 5.0 -CATALOG_NAME $OUTPUT_ini -CHECKIMAGE_TYPE BACKGROUND -CHECKIMAGE_NAME $bg
     wc $OUTPUT_ini | awk '{print("Star_num  " $1)}' >>list_matchmatss
@@ -731,7 +731,8 @@ xlimitmagcal ( )
     echo "average for the" $maglimitSigma  " sigma limit R magnitude:" $averagelimit >>$stringtimeForMonitor
     echo $averagelimit >>averagelimit.cat
     cat -n averagelimit.cat >averagelimitCol.cat
-    gnuplot xplotLimitmag.gn &
+    sh xplotLimitmag.sh $ID_MountCamara
+   # gnuplot xplotLimitmag.gn &
 
     #	sum=0
     #	for R2limitmag in `cat newimg_maglimit.cat | awk '{print($3)}'`
@@ -851,6 +852,7 @@ xupdatetemp ( )
             sh xChbTempBatch_update.sh
             wc matchchb.log
             sh xUpdate_refcom3d.cat.sh  #update the refcom3d.cat    
+            xtimeCal
             continue
         else
             # it will not complete the temp any more
@@ -858,6 +860,7 @@ xupdatetemp ( )
             ls $FITFILE >>xMissmatch.list
             rm -rf $dir_tempfile/noupdate.flag
             rm -rf noupdate.flag
+            xtimeCal
             continue
         fi
     fi
