@@ -235,7 +235,7 @@ xSentObjAndBg (  )
 
 xgetstars (  )
 {
-    sex $FITFILE  -c  xmatchdaofind.sex -DETECT_THRESH 5.0 -ANALYSIS_THRESH 5.0 -CATALOG_NAME $OUTPUT_ini -CHECKIMAGE_TYPE BACKGROUND -CHECKIMAGE_NAME $bg
+    sex $FITFILE  -c  xmatchdaofind.sex -DETECT_THRESH $DETECT_TH -ANALYSIS_THRESH $DETECT_TH -CATALOG_NAME $OUTPUT_ini -CHECKIMAGE_TYPE BACKGROUND -CHECKIMAGE_NAME $bg
     wc $OUTPUT_ini | awk '{print("Star_num  " $1)}' >>list_matchmatss
     wc $OUTPUT_ini | awk '{print("Star_num  " $1)}' >>$stringtimeForMonitor	
     NStar_ini=`cat $OUTPUT_ini | wc -l | awk '{printf("%.0f\n", $1)}'`

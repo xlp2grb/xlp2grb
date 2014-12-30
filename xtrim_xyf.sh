@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-xmkupload ()
+xmkupload (  )
 {
 #echo "---xmkupload---"
 pnglist=`cat $listotxy | awk '{print($4".fit,",$4".jpg,")}' | tr '\n' ' ' | sed 's/, $//'`
