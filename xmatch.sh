@@ -684,7 +684,7 @@ xlimitmagcal_magbin (  )
     then
     	echo "no refall_magbin.cat"
     else
-         rm -rf outputlimit.cat newimg_magbin.cat newimgLimitmag.cat
+         rm -rf outputlimit.cat newimg_magbin.cat newrefall_maglimit.res.cat
          cat $OUTPUT_geoxytran3 | awk '{print($1,$2,$7)}' | sort -n -k 3 >outputlimit.cat
          ./xlimit_newimg	#output is newimg_magbin.cat
          paste newimg_maglimit.cat refall_magbin.cat >newrefall_maglimit.cat
