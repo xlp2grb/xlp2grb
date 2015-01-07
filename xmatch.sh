@@ -676,34 +676,41 @@ xfluxcalibration ( )
     mv temp $OUTPUT_geoxytran3
 }
 
-xlimitmagcal ( )
+xlimitmagcal_magbin (  )
 {
     #======================
     #	modefied by xlp at 20140929
-    ####if test ! -r refall_magbin.cat
-    ####then
-    ####	echo "no refall_magbin.cat"
-    ####else
-    ####rm -rf outputlimit.cat newimg_magbin.cat newimgLimitmag.cat
-    ####cat $OUTPUT_geoxytran3 | awk '{print($1,$2,$7)}' | sort -n -k 3 >outputlimit.cat
-    ####./xlimit_newimg	#output is newimg_magbin.cat, newimgLimitmag.cat
-    ####gnuplot << EOF
-    ####set term png
-    ####set output "$newimgMaglimit"
-    ####set xlabel "Magnitude"
-    ####set ylabel "Ratio of detected stars to full number of USNO B2 stars"
-    ####set grid
-    ####set key left
-    ####f(x)=a*x+b
-    ####fit [][0.2:0.6]f(x) 'newimgLimitmag.cat' u 1:2 via a,b  
-    ####plot [8:14][0:1]'newimgLimitmag.cat' u 1:2 t '0.1magbin',f(x) t 'fit[0.2:0.6]'
-    ####quit
-    ####EOF
-    #####displayPadNum=`ps -all | awk '{if($14=="display") print($4)}'`
-    #####kill -9 $displayPadNum
-    #####display -resize 300x300+0+0 $newimgMaglimit &
-    ####echo "Magnitude limit plot is finished!"
-    ####fi
+    if test ! -r refall_magbin.cat
+    then
+    	echo "no refall_magbin.cat"
+    else
+         rm -rf outputlimit.cat newimg_magbin.cat newimgLimitmag.cat
+         cat $OUTPUT_geoxytran3 | awk '{print($1,$2,$7)}' | sort -n -k 3 >outputlimit.cat
+         ./xlimit_newimg	#output is newimg_magbin.cat
+         paste newimg_maglimit.cat refall_magbin.cat >newrefall_maglimit.cat
+         cat newrefall_maglimit.cat | awk '{if($4>0)print($1,($2/$4)}' >newrefall_maglimit.res.cat
+#         LimitFromMagbin=`cat newrefall_maglimit.res.cat | awk '{if($2>0.45 && $2<0.55)print($2)}'`
+         sh xlimit_newimg_magbin.sh $newimgMaglimit
+    fi
+    #gnuplot << EOF
+#set term png
+#set output "$newimgMaglimit"
+#set xlabel "Magnitude"
+#set ylabel "Ratio of detected stars to full number of USNO B2 stars"
+#set grid
+#set key left
+#f(x)=a*x+b
+#fit [][0.2:0.6] f(x) 'newrefall_maglimit.res.cat' u 1:2 via a,b  
+#plot [8:14][0:1]'newrefall_maglimit.res.cat' u 1:2 t '0.1magbin',f(x) t 'fit[0.2:0.6]'
+#quit
+#EOF
+    #displayPadNum=`ps -all | awk '{if($14=="display") print($4)}'`
+    #kill -9 $displayPadNum
+    #display -resize 300x300+0+0 $newimgMaglimit &
+   # fi
+
+    
+    
     #=======================		
     #modified by xlp at 20141030
     #	#to calculate the limit magnitude, it is roughly right
@@ -720,6 +727,10 @@ xlimitmagcal ( )
     #	fi
     #       	
     #=========================
+}
+
+xlimitmagcal ( )
+{
     date
     cat  $OUTPUT_geoxytran3 | awk '{if($1>20 && $2>20 && $1<3020 && $2<3020 && $8<0.2 && $8>0.05)print($1,$2,$7+2.512*log($3*DETECT_TH/$6/sqrt(4)/maglimitSigma)/log(10))}'  DETECT_TH=$DETECT_TH maglimitSigma=$maglimitSigma >newimg_maglimit.cat  # area=4 for aperature phot
     if test -r newimg_maglimit_result.cat
@@ -1453,6 +1464,7 @@ do
     #xplotxyxymatchresult
     xfluxcalibration	
     xlimitmagcal
+    #xlimitmagcal_magbin
     xcrossmatchwith2radius
     xCheckshiftResult  
     xcheckMatchResult
