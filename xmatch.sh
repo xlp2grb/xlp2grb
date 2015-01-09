@@ -39,7 +39,9 @@ tempmatchstars_mag=GwacStandall_mag.cat
 tempsubbgfile=refcom_subbg.fit
 Accfile=refcom.acc
 CCDsize=3056
-ejmin=100
+ejmin=300  #3056-(20sqrdegree*3600/29.8arcsec)/2 = 320 
+#This makes sure that the effective FoV for one image is as larger as 20*20 sqr degrees
+#The difference of 20 pixel makes that two ccds on one mount could be overlap even though the angle of 0.76 degrees  between two CCDs  
 ejmax=`echo $CCDsize | awk '{print($1-ejmin)}' ejmin=$ejmin` 
 crossRedius=1.8
 #crossRedius_inner=1.8
