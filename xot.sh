@@ -15,5 +15,7 @@ xautoDatareduction	xsubOnline.sh
 wait
 xautoDatareduction	xtrim_xyf_online.sh
 wait
+xautoDatareduction  xtrim_xyf_tempfile_online.sh
+wait
 xautoDatareduction 	xotOnline_readdata.sh
 wait

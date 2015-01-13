@@ -1,5 +1,5 @@
 #!/bin/bash
-
+#to delete the function of xtrimimg, it is not needed anymore. 2015011350113
 
 xmkupload (  )
 {
@@ -39,7 +39,7 @@ xyf_fits2jpg ( )
     xim=$3
     yim=$4
     subridus=$5
-    FILEforsubbg=`echo $1 | sed 's/\.fit/_subbg.fit/g'`
+    FILEforsubbg=`echo $FILEforsub | sed 's/\.fit/_subbg.fit/g'`
     if test -r $FILEforsubbg
     then
             FILEforsub=$FILEforsubbg
@@ -161,11 +161,12 @@ DIR_data=`pwd`
 CCDsize=3056
 CCDsize_Big=`echo $CCDsize | awk '{print($1-1)}'`
 boxpixel=50
-echo "#############33"
+echo "#############"
 wc -l $listotxy
-echo "#############33"
-xtrimimage $listotxy
-wait
+echo "#############"
+#modified by xlp at 20150113
+#xtrimimage $listotxy
+#wait
 xfit2jpg $listotxy
 wait
 xmkupload
