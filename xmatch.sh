@@ -676,6 +676,11 @@ xfluxcalibration ( )
     echo "S2N="$S2N >>$stringtimeForMonitor
     cat $OUTPUT_geoxytran3 | awk '{print($1,$2,$3,$4,$5,$6,$7+S2N,$8,$9,$10)}' S2N=$S2N >temp
     mv temp $OUTPUT_geoxytran3
+    echo $S2N $FITFILE >>DiffMag.cat
+    cat -n DiffMag.cat >temp
+    mv temp DiffMagCol.cat
+    sh xplotDiffExtincFromTemp.sh $ID_MountCamara
+
 }
 
 xlimitmagcal_magbin (  )
@@ -742,7 +747,7 @@ xlimitmagcal ( )
     ./xmaglimitcal
     averagelimit=`cat newimg_maglimit_result.cat | awk '{print($1)}'`
     echo "average for the" $maglimitSigma  " sigma limit R magnitude:" $averagelimit >>$stringtimeForMonitor
-    echo $averagelimit >>averagelimit.cat
+    echo $averagelimit $FITFILE >>averagelimit.cat
     cat -n averagelimit.cat >averagelimitCol.cat
     sh xplotLimitmag.sh $ID_MountCamara
    # gnuplot xplotLimitmag.gn &
@@ -1319,7 +1324,7 @@ xFWHMCalandFocus ( )
     if test -s $tempstandmagstarFis
     then
         echo "=======Have $tempstandmagstarFis==========="
-        ./xFwhmCal_standmag.sh $DIR_data $FITFILE $tempstandmagstarFis $OUTPUT_fwhm & 
+        sh xFwhmCal_standmag.sh $DIR_data $FITFILE $tempstandmagstarFis $OUTPUT_fwhm & 
     else
         echo "=========NO $tempstandmagstarFis======="
     fi
@@ -1394,12 +1399,17 @@ xSentFwhmAndTrack (  )
     trackrespng=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_track.png")}'`
     limitmagrespng=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_limitmag.png")}'`
     rmsrespng=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_xyrms.png")}'`
+    diffmagrespng=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_diffmag.png")}'`
+    
     mv average_fwhm.png $fwhmrespng
     mv Track.png $trackrespng
     mv Limitmag.png $limitmagrespng
     mv Trackrms.png $rmsrespng
+    mv DiffExtinc.png $diffmagrespng
     wait
-    ./xatcopy_remoteimg4.f $fwhmrespng  $trackrespng  $limitmagrespng $rmsrespng $IPforMonitorAndTemp $Dir_IPforMonitorAndTemp &
+    
+    ./xatcopy_remoteimg5.f $fwhmrespng  $trackrespng  $limitmagrespng $rmsrespng $diffmagrespng $IPforMonitorAndTemp $Dir_IPforMonitorAndTemp &
+    #./xatcopy_remoteimg4.f $fwhmrespng  $trackrespng  $limitmagrespng $rmsrespng $IPforMonitorAndTemp $Dir_IPforMonitorAndTemp &
     #./xatcopy_remoteimg3.f $fwhmrespng  $trackrespng  $limitmagrespng $IPforMonitorAndTemp $Dir_IPforMonitorAndTemp &
     #  ./xatcopy_remoteimg2.f $fwhmrespng  $trackrespng $IPforMonitorAndTemp $Dir_IPforMonitorAndTemp &
     #    ./xatcopy_remoteimg.f $trackrespng  $IPforMonitorAndTemp ~/webForTrack  &

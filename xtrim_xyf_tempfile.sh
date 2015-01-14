@@ -1,6 +1,12 @@
 #!/bin/bash
 #to delete the function of xtrimimg, it is not needed anymore. 2015011350113
 #to cut the subimage from tempfile
+#it needs the iraf file named iraf_trimtempforOT
+if test ! -r $HOME/iraf_trimtempforOT
+then
+    echo "no iraf file with the name of iraf_trimtempforOT"
+    exit
+fi
 
 Dir_temp=/data2/workspace/tempfile/result
 
@@ -186,7 +192,7 @@ xtrimsubimage ( )
     #echo "using iraf.ccdpro to cut the fit"
     echo $imtrimregion
 
-    cd $HOME/iraf3
+    cd $HOME/iraf_trimtempforOT
     cp -f login.cl.old login.cl
     echo noao >> login.cl
     echo imred >> login.cl
@@ -196,7 +202,7 @@ xtrimsubimage ( )
     echo logout >> login.cl
     cl < login.cl >xlogfile
     #cl <login.cl
-    cd $HOME/iraf3
+    cd $HOME/iraf_trimtempforOT
     cp -f login.cl.old login.cl
     cd $DIR_data
     sethead -kr X xim=$xim yim=$yim Trimsec=$imtrimregion  imwhole=$FILEforsub  $imsubname
@@ -212,9 +218,8 @@ boxpixel=50
 echo "#############"
 wc -l $listotxy
 echo "#############"
-#modified by xlp at 20150113
-#xtrimimage $listotxy
-#wait
+xtrimimage $listotxy
+wait
 xfit2jpg $listotxy
 wait
 xmkupload
