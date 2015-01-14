@@ -16,6 +16,7 @@ xfwhmcalandsent ( )
         cat -n averagefile temfile | column -t >averagefile_fin
         tail -1 averagefile_fin  >fwhm_lastdata_2k
         cat averagefile_fin | awk '{print($2,$3,$4,$5,$6)}' | column -t >averagefile
+        cp averagefile_fin allxyfwhm.cat.plot
 
 #======================================================
         mountid=`gethead $FITFILE "MOUNTID" `

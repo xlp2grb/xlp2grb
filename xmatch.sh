@@ -16,13 +16,18 @@
 DIR_data=`pwd`
 
 #=====================
-Dir_monitor=/data2/workspace/monitor/
+Dir_monitor=/data2/workspace/monitor
 stringtimeForMonitorT=`date -u +%Y%m%d`
-stringtimeForMonitor=`echo $Dir_monitor"reduc_"$stringtimeForMonitorT`".log"
-stringtimeForReduc=`echo $Dir_monitor"TimeForReduc_"$stringtimeForMonitorT`".log"
+stringtimeForMonitor=`echo $Dir_monitor"/reduc_"$stringtimeForMonitorT".log"`
+stringtimeForReduc=`echo $Dir_monitor"/TimeForReduc_"$stringtimeForMonitorT".log"`
+Dir_monitor_allplot=`echo $Dir_monitor"/"$stringtimeForMonitorT`
+if test ! -r $Dir_monitor_allplot
+then
+    mkdir $Dir_monitor_allplot
+fi
 #=====================
 
-sub_dir=/data2/workspace/redufile/subfile/
+sub_dir=/data2/workspace/redufile/subfile
 lc_dir=/data2/workspace/redufile/getlc
 Dir_temp=/data2/workspace/tempfile/result
 trimsubimage_dir=/data2/workspace/redufile/trimsubimage
@@ -677,8 +682,7 @@ xfluxcalibration ( )
     cat $OUTPUT_geoxytran3 | awk '{print($1,$2,$3,$4,$5,$6,$7+S2N,$8,$9,$10)}' S2N=$S2N >temp
     mv temp $OUTPUT_geoxytran3
     echo $S2N $FITFILE >>DiffMag.cat
-    cat -n DiffMag.cat >temp
-    mv temp DiffMagCol.cat
+    cat -n DiffMag.cat >allxyDiffMagCol.cat.plot
     sh xplotDiffExtincFromTemp.sh $ID_MountCamara
 
 }
@@ -747,8 +751,8 @@ xlimitmagcal ( )
     ./xmaglimitcal
     averagelimit=`cat newimg_maglimit_result.cat | awk '{print($1)}'`
     echo "average for the" $maglimitSigma  " sigma limit R magnitude:" $averagelimit >>$stringtimeForMonitor
-    echo $averagelimit $FITFILE >>averagelimit.cat
-    cat -n averagelimit.cat >averagelimitCol.cat
+    echo $averagelimit $FITFILE >>allxyaveragelimit.cat
+    cat -n averagelimit.cat >allxyaveragelimitCol.cat
     sh xplotLimitmag.sh $ID_MountCamara
    # gnuplot xplotLimitmag.gn &
 
@@ -1387,6 +1391,7 @@ xInforMonitor (  )
     listMonitorAll=listForMonitorall.dat_`date +%Y%m%d`
     cp listForMonitorall.dat $listMonitorAll 
     cp $listMonitorAll $Dir_monitor
+    cp allxy*.plot $Dir_monitor_allplot
     tail -1 listForMonitorall.dat >listForMonitor.dat
     # image, star_num, xshift, yshift, xrms, yrms, matchNumber(1times), Fwhm(2k), limitmag, Num_1OTc 
     #need to add a soft to upload the listFormonitor

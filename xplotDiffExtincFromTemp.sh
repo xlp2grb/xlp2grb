@@ -12,6 +12,6 @@ set grid
 set key left
 set key box
 set title "$titlefile"
-plot 'DiffMagCol.cat' u 1:2 w lp pt 6 ps 2 title ''
+plot 'allxyDiffMagCol.cat.plot' u 1:2 w lp pt 6 ps 2 title ''
 reset
 EOF

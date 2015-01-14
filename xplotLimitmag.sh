@@ -12,6 +12,6 @@ set grid
 set key left
 set key box
 set title "$titlefile"
-plot 'averagelimitCol.cat' u 1:2 w lp pt 6 ps 2 title ''
+plot 'allxyaveragelimitCol.cat' u 1:2 w lp pt 6 ps 2 title ''
 reset
 EOF
