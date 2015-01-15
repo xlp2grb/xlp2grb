@@ -51,7 +51,8 @@ xcopytemp (   )
     echo $tempfilenamefinal >listtemp_dirname  #this file for the update the file xUpdate_refcom3d.cat.sh 
     cp -fr $tempfilenamefinal/refcom_subbg.fit $Dir_redufile
     wait
-    mv refcom_subbg.fit TempForcutImg.fit
+    TempForcutImg=refcom_subbg.fit 
+    mv refcom_subbg.fit $TempForcutImg
 }            
 
 
@@ -90,14 +91,20 @@ xcopytempfiletopwd (  )
 
 xyf_fits2jpg ( )
 {
-    FILEforsub=$1
-    jpgimg=$2
+    #FILEforsub=$1
+    FILEforsub=`echo $TempForcutImg`
+    
+    jpgimg_origin=$2
+    echo "origin name is "$jpgimg_origin
+    Date_refimage=`gethead $TempForcutImg "D-OBS-UT" | sed 's/-//g'`
+    time_refimage=`gethead $TempForcutImg "T-OBS-UT" | sed 's/://g' | awk '{printf("%.0f\n",$1)}'`
+    jpgimg=`echo $jpgimg_origin"_D"$Date_refimage"_UT"$time_refimage".jpg"`
+    echo "modified name is "$jpgimg
+
     xim=$3
     yim=$4
     subridus=$5
-    xcopytempfiletopwd
-    wait
-    FILEforsub=`echo TempForcutImg.fit`
+    
     newlineTest=`echo "$FILEforsub $jpgimg $xim $yim $subridus \" \""`
     #echo $newlineTest
     #echo " python fits_cut_to_png.py $newlineTest"
@@ -108,7 +115,7 @@ xyf_fits2jpg ( )
 xfit2jpg ( )
 {
     #	echo "============xfit2jpg========="
-    cat $listotxy | awk '{print($1,$4".jpg",$2,$3,boxpixel)}' boxpixel=$boxpixel >newfile_listotxy
+    cat $listotxy | awk '{print($1,$4,$2,$3,boxpixel)}' boxpixel=$boxpixel >newfile_listotxy
 
     cat newfile_listotxy | while read line
 do
@@ -117,8 +124,8 @@ do
     xyf_fits2jpg $line
 done
 rm -rf newfile_listotxy
-
 }
+
 xtrimimage ( )
 {
     #	echo "=======xtrimimage====="
@@ -139,22 +146,25 @@ xtrimsubimage ( )
     imsubname=$2
     xim=$3
     yim=$4
-    FILEforsubbg=`echo $FILEforsub | sed 's/\.fit/_subbg.fit/g'`
+    #FILEforsubbg=`echo $FILEforsub | sed 's/\.fit/_subbg.fit/g'`
+    xcopytempfiletopwd
+    wait
+    FILEforsub=`echo $TempForcutImg`
     #====================
-    if test ! -r $FILEforsub
-    then
-        echo "no $FILEforsub"
-        if test ! -r $FILEforsubbg
-        then
-            echo "no $FILEforsubbg"
-            continue
-        fi
-    fi
+   # if test ! -r $FILEforsub
+   # then
+   #     echo "no $FILEforsub"
+   #     if test ! -r $FILEforsubbg
+   #     then
+   #         echo "no $FILEforsubbg"
+   #         continue
+   #     fi
+   # fi
     #====================
-    if test -r $FILEforsubbg
-    then
-        FILEforsub=$FILEforsubbg
-    fi
+   # if test -r $FILEforsubbg
+   # then
+   #     FILEforsub=$FILEforsubbg
+   # fi
     #echo $FILEforsub $imsubname $xim $yim 
     xmin=`echo  $xim | awk '{printf("%.0f", $1-tsize)}' tsize=$boxpixel`
     xmax=`echo  $xim | awk '{printf("%.0f", $1+tsize)}' tsize=$boxpixel`
