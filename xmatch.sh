@@ -752,7 +752,7 @@ xlimitmagcal ( )
     averagelimit=`cat newimg_maglimit_result.cat | awk '{print($1)}'`
     echo "average for the" $maglimitSigma  " sigma limit R magnitude:" $averagelimit >>$stringtimeForMonitor
     echo $averagelimit $FITFILE >>allxyaveragelimit.cat
-    cat -n averagelimit.cat >allxyaveragelimitCol.cat
+    cat -n allxyaveragelimit.cat >allxyaveragelimitCol.cat
     sh xplotLimitmag.sh $ID_MountCamara
    # gnuplot xplotLimitmag.gn &
 

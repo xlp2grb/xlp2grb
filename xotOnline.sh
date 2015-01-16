@@ -20,6 +20,9 @@ Dir_rawdata=$1
 Dir_redufile=`pwd`
 temp_dir=/home/gwac/newfile  #for the temp maker computer
 temp_ip=`echo 190.168.1.40` #(ip for temp builder at xinglong)
+IPforMonitorAndTemp=`echo 190.168.1.40`
+Dir_IPforMonitorAndTemp=/home/gwac/webForFwhm
+
 echo $Dir_rawdata
 echo $Dir_temp
 echo $Dir_redufile
@@ -92,6 +95,13 @@ xMainReduction ( )
 
 
 #==========================================================================================
+xsentFwhm (  )
+{
+    fwhmrespng=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_fwhm.png")}'`
+    mv average_fwhm.png $fwhmrespng
+    ./xatcopy_remoteimg.f $fwhmrespng $IPforMonitorAndTemp $Dir_IPforMonitorAndTemp &
+
+}
 
 xcheckcombine ( )
 {
@@ -113,6 +123,7 @@ else
 	wait
 	rm -rf fwhm_lastdata
 	./xFwhmCal_noMatch.sh $Dir_redufile $comimage 
+    xsentFwhm &
 	wait
 	if test ! -s fwhm_lastdata
 	then
@@ -132,7 +143,7 @@ else
 			ipfile=`echo "ip_address_"$ID_MountCamara".dat"`
 		        echo $ipadress $Dir_temp >$ipfile
 			echo "copy the combined image to the temp making computer" >>$stringtimeForMonitor
-		        ./xatcopy_remote.f $ipfile $comimage  $temp_ip $temp_dir"/"$ID_MountCamara
+		        ./xatcopy_remoteimg2.f $ipfile $comimage  $temp_ip $temp_dir"/"$ID_MountCamara
 		        wait
 			#sleep 300  #modified by xlp at 20140826
 		        rm -rf imcombine.flag $comimage newcomlist listupdate 
@@ -186,25 +197,26 @@ fi
 xCheckFirstMaking ( )
 {
 	if test -r $errorimage
-        then
-		echo "have error image flag" >>$stringtimeForMonitor
-                rm -rf xatcopy_remote.flag notemp.flag $errorimage newcomlist
-        fi
+    then
+	echo "have error image flag" >>$stringtimeForMonitor
+            rm -rf xatcopy_remote.flag notemp.flag $errorimage newcomlist
+    fi
 
-        if test -r xatcopy_remote.flag
-        then
-		echo "first have xatcopy_remote.flag" >>$stringtimeForMonitor
-                echo "first have xatcopy_remote.flag"
-                #sleep 180 #modified by xlp at 20140826 
-		ls $fitfile >>xMissmatch.list
-		xfits2jpg &
-		./xFwhmCal_noMatch.sh $Dir_redufile $fitfile
-		wait
-#                continue
-        else
-                xcheckcombine
-#                wait
-        fi
+    if test -r xatcopy_remote.flag
+    then
+	echo "first have xatcopy_remote.flag" >>$stringtimeForMonitor
+            echo "first have xatcopy_remote.flag"
+            #sleep 180 #modified by xlp at 20140826 
+	ls $fitfile >>xMissmatch.list
+	xfits2jpg &
+	./xFwhmCal_noMatch.sh $Dir_redufile $fitfile
+    xsentFwhm &
+	wait
+#            continue
+    else
+            xcheckcombine
+#            wait
+    fi
 
 }
 
@@ -344,6 +356,14 @@ rm -rf $ccdimgjpg
 
 XtellCCDtype ( )
 {
+echo "====xtellCCDtype===="
+ Nimhead=`imhead $FILE | wc -l | awk '{print($1)}'`
+ echo $Nimhead
+ if [ ` echo " $Nimhead < 50 " | bc ` -eq 1 ]
+ then
+     echo "imhead is not complete, waiting 1 second"
+     sleep 1
+ fi
  xwfits2fit  #if it is a fits
   #&&&&&&&&&&&&&&&&&&#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@   # if it is a fit
   #echo "---------no need to do the xwfits2fit-------"
@@ -363,9 +383,17 @@ XtellCCDtype ( )
   ID_ccdtype=`gethead "CCDTYPE" $fitfile`
   if  [ "$ID_ccdtype"x = "OBJECT"x ] # it is an object image
   then 
+    #  if test -r recopy_WrongCCDtype.flag
+    #  then
+    #      rm recopy_WrongCCDtype.flag
+    #  fi
 	  xcheckAndMakeTemp
   elif  [ "$ID_ccdtype"x = "DARK"x ]  #it is a dark image
   then
+    #  if test -r recopy_WrongCCDtype.flag
+    #  then
+    #      rm recopy_WrongCCDtype.flag
+    #  fi
           ls $fitfile >>listdark
           line_darklist=`wc -l listdark | awk '{print($1)}'`
           if [ $line_darklist -gt 10 ]
@@ -384,6 +412,10 @@ XtellCCDtype ( )
           fi
   elif [ "$ID_ccdtype"x = "FLAT"x ]  # it is a flat image
   then
+    #  if test -r recopy_WrongCCDtype.flag
+    #  then
+    #      rm recopy_WrongCCDtype.flag
+    #  fi
           ls $fitfile >>listflat
           line_flatlist=`wc -l listflat | awk '{print($1)}'`
           if [ $line_flatlist -gt 10 ]
@@ -400,6 +432,16 @@ XtellCCDtype ( )
           fi
   else   # error image
 	echo "image with wrong ccdtype"
+    #if test ! -r recopy_WrongCCDtype.flag
+    #then
+    #    rm -rf $fitfile 
+    #    rm $Dir_rawdata/$fitfilegz 
+    #    mv $Dir_rawdata/$FILE $Dir_rawdata
+    #    touch recopy_WrongCCDtype.flag
+    #    XtellCCDtype
+    #else  #recopy_WrongCCDtype.flag exist
+    #    rm recopy_WrongCCDtype.flag
+    #fi
   fi
 }
 
