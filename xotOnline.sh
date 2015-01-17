@@ -123,8 +123,8 @@ else
 	wait
 	rm -rf fwhm_lastdata
 	./xFwhmCal_noMatch.sh $Dir_redufile $comimage 
-    xsentFwhm &
 	wait
+    xsentFwhm &
 	if test ! -s fwhm_lastdata
 	then
 		echo "No ouptut for xFwhmCal_noMatch.sh"
@@ -210,8 +210,8 @@ xCheckFirstMaking ( )
 	ls $fitfile >>xMissmatch.list
 	xfits2jpg &
 	./xFwhmCal_noMatch.sh $Dir_redufile $fitfile
-    xsentFwhm &
 	wait
+    xsentFwhm &
 #            continue
     else
             xcheckcombine

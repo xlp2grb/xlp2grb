@@ -239,7 +239,37 @@ xSentObjAndBg (  )
 
 }
 
+xMakefaulkValueFormonitor_TrackRMSFWHM (  )
+{
+    echo "Make a faulk value for Track, RMS and FWHM monitors"
+    echo  "-50.0" $FITFILE "faulk" >>allxyshift.cat
+    cat -n allxyshift.cat >allxyshift.cat.plot
 
+    echo  "0.0" $FITFILE "faulk" >>allxyrms.cat
+    cat -n allxyrms.cat >allxyrms.cat.plot
+    sh xplottrackrms.sh $ID_MountCamara
+    wait
+
+    echo $FITFILE "0.0 0.0 0.0 0.0" >>averagefile
+    cat -n averagefile >allxyfwhm.cat.plot
+    tail -1 allxyfwhm.cat.plot >fwhm_lastdata
+    sh xplotfwhm.sh $ID_MountCamara
+    wait 
+}
+
+xMakefaulkValueFormonitor_LimitmagDiffmag (  )
+{
+    echo "Make a faulk value for limitmag and Diffmag monitors"
+    echo  "10.0" $FITFILE "faulk" >>allxyaveragelimit.cat
+    cat -n allxyaveragelimit.cat >allxyaveragelimitCol.cat
+    sh xplotLimitmag.sh $ID_MountCamara
+    wait
+
+    echo "1.0" $FITFILE "faulk" >>allxyDiffMag.cat
+    cat -n allxyDiffMag.cat >allxyDiffMagCol.cat.plot
+    sh xplotDiffExtincFromTemp.sh $ID_MountCamara
+    wait
+}
 xgetstars (  )
 {
     sex $FITFILE  -c  xmatchdaofind.sex -DETECT_THRESH $DETECT_TH -ANALYSIS_THRESH $DETECT_TH -CATALOG_NAME $OUTPUT_ini -CHECKIMAGE_TYPE BACKGROUND -CHECKIMAGE_NAME $bg
@@ -272,6 +302,9 @@ xgetstars (  )
         #	then
         echo "The objects is too small,Star num: " $NStar_ini
         xtimeCal
+        xMakefaulkValueFormonitor_TrackRMSFWHM
+        xMakefaulkValueFormonitor_LimitmagDiffmag
+        xSentFwhmAndTrack
         break
         #	else
         #		./xFwhmCal_noMatch.sh $DIR_data $FITFILE
@@ -285,6 +318,9 @@ xgetstars (  )
             echo "Background is too brightness: " $bgbrightness >>$stringtimeForMonitor
             ls $FITFILE >>xMissmatch.lis
             xtimeCal
+            xMakefaulkValueFormonitor_TrackRMSFWHM
+            xMakefaulkValueFormonitor_LimitmagDiffmag
+            xSentFwhmAndTrack
             break
             #	elif  [ $bgbrightness -gt $Nbgbright_ini_lowlimit ] #output the  
             #	then
@@ -326,6 +362,8 @@ xreTrack (  )
     echo $xxshift $yyshift $FITFILE >>allxyshift.cat 
     echo $xrms $yrms $FITFILE >>allxyrms.cat 
     xtimeCal
+    xMakefaulkValueFormonitor_LimitmagDiffmag
+    xSentFwhmAndTrack
     break
 }
 
@@ -414,7 +452,7 @@ xmatchimgtemp ( )
         Ntemp3sd=`cat $imagetmp3sd | wc -l | awk '{print($1)}'`
         #============================
         #	to check wether the match is good enough or not by rms at X-axis and Y-axis.
-        if [ ` echo " $xrms > 0.12 " | bc ` -eq 1 ] || [ ` echo " $yrms > 0.12 " | bc ` -eq 1 ] || [ ` echo " $Ntemp3sd < 100.0 " | bc ` -eq 1 ] # if not good enough
+        if [ ` echo " $xrms > 0.13 " | bc ` -eq 1 ] || [ ` echo " $yrms > 0.13 " | bc ` -eq 1 ] || [ ` echo " $Ntemp3sd < 100.0 " | bc ` -eq 1 ] # if not good enough
         then
             echo "xrms or yrms is not good for the first tolerance match"
             rm -rf $imagetrans3sd
@@ -505,7 +543,7 @@ xmatchimgtemp ( )
                 xrms=`cat $imagetrans3sd | grep "xrms"  | awk '{print($2)}'`
                 yrms=`cat $imagetrans3sd | grep "yrms"  | awk '{print($2)}'`
                 Ntemp3sd=`cat $imagetmp3sd | wc -l | awk '{print($1)}'`
-                if [ ` echo " $xrms < 0.12 " | bc ` -eq 1 ] && [ ` echo " $yrms < 0.12 " | bc ` -eq 1 ] && [ ` echo " $Ntemp3sd > 100 " | bc ` -eq 1 ]
+                if [ ` echo " $xrms < 0.13 " | bc ` -eq 1 ] && [ ` echo " $yrms < 0.13 " | bc ` -eq 1 ] && [ ` echo " $Ntemp3sd > 100 " | bc ` -eq 1 ]
                 then	
                     echo "image match successful"
                     rm deletenewxyshift.cat
@@ -681,8 +719,8 @@ xfluxcalibration ( )
     echo "S2N="$S2N >>$stringtimeForMonitor
     cat $OUTPUT_geoxytran3 | awk '{print($1,$2,$3,$4,$5,$6,$7+S2N,$8,$9,$10)}' S2N=$S2N >temp
     mv temp $OUTPUT_geoxytran3
-    echo $S2N $FITFILE >>DiffMag.cat
-    cat -n DiffMag.cat >allxyDiffMagCol.cat.plot
+    echo $S2N $FITFILE >>allxyDiffMag.cat
+    cat -n allxyDiffMag.cat >allxyDiffMagCol.cat.plot
     sh xplotDiffExtincFromTemp.sh $ID_MountCamara
 
 }
@@ -858,7 +896,8 @@ xupdatetemp ( )
     if [ $nupdate -lt 5  ]
     then
         ls $FITFILE >>xMissmatch.list
-        continue
+        #xtimeCal
+        #continue
 
     else
         echo "nupdate num. is larger than 5"
@@ -874,19 +913,20 @@ xupdatetemp ( )
             sh xChbTempBatch_update.sh
             wc matchchb.log
             sh xUpdate_refcom3d.cat.sh  #update the refcom3d.cat    
-            xtimeCal
-            continue
+            #xtimeCal
+            #continue
         else
             # it will not complete the temp any more
             dir_tempfile=`cat listtemp_dirname`
             ls $FITFILE >>xMissmatch.list
             rm -rf $dir_tempfile/noupdate.flag
             rm -rf noupdate.flag
-            xtimeCal
-            continue
+           # xtimeCal
+           # continue
         fi
     fi
-
+    xtimeCal
+    continue
 }
 
 xcctranOT2image ( )
@@ -1319,7 +1359,7 @@ xMountTrack ( )
     #sh xtrack.sh $ID_MountCamara & 
 
     cat -n allxyrms.cat >allxyrms.cat.plot
-    sh xtrackrms.sh $ID_MountCamara &
+    sh xplottrackrms.sh $ID_MountCamara &
 }
 
 xFWHMCalandFocus ( )
@@ -1431,17 +1471,24 @@ xcheckMatchResult (   )
     if test -r noupdate.flag
     then
         echo "Have noupdate.flag"
-        ./xFwhmCal_noMatch.sh $DIR_data $FITFILE &
+        ./xFwhmCal_noMatch.sh $DIR_data $FITFILE 
+        wait
+        xMakefaulkValueFormonitor_LimitmagDiffmag
+        xSentFwhmAndTrack
         xupdatetemp   #to update the tempfile
     elif [ $NumOT_center -gt 30 ]
     then
+        ./xFwhmCal_noMatch.sh $DIR_data $FITFILE  
+        wait
         echo "class 1 OT is: " $NumOT_center
         echo "no noupdate.flag, do the next image"
         echo "no noupdate.flag but the ot num is:"$NumOT_center >>$stringtimeForMonitor
         ls $FITFILE >>xMissmatch.list
         mv newxyshift.cat.bak newxyshift.cat
-        ./xFwhmCal_noMatch.sh $DIR_data $FITFILE  & 
         #wait
+        xMakefaulkValueFormonitor_LimitmagDiffmag
+        xSentFwhmAndTrack
+        xtimeCal
         continue  # The reduction of this image is not good enough, give up. 
     else
         :

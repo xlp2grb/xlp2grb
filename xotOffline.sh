@@ -20,6 +20,9 @@ Dir_rawdata=$1
 Dir_redufile=`pwd`
 temp_dir=/home/gwac/newfile  #for the temp maker computer
 temp_ip=`echo 190.168.1.40` #(ip for temp builder at xinglong)
+IPforMonitorAndTemp=`echo 190.168.1.40`
+Dir_IPforMonitorAndTemp=/home/gwac/webForFwhm
+
 echo $Dir_rawdata
 echo $Dir_temp
 echo $Dir_redufile
@@ -27,7 +30,7 @@ rm -rf *flag ip*.dat gototemp.fit newxyshift.cat newframeOT.obj newcomlist listd
 rm -rf matchchb.log matchchb_all.log xMissmatch.list list_matchmatss newimageCoord.list
 rm -rf list2frame.list list_fin listnewskyot.list listOT listsky listsky1 listskyotfile listskyotfileHis listskyot.list listtemp listtime
 rm -rf noupdate.flag listupdateimage.list listupdate_last5 listupdate crossoutput_skytemp xatcopy_remote.flag 
-
+#
 rm -rf *Initial*
 #=================================================================================
 ./xmknewfile.sh
@@ -92,6 +95,13 @@ xMainReduction ( )
 
 
 #==========================================================================================
+xsentFwhm (  )
+{
+    fwhmrespng=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_fwhm.png")}'`
+    mv average_fwhm.png $fwhmrespng
+    ./xatcopy_remoteimg.f $fwhmrespng $IPforMonitorAndTemp $Dir_IPforMonitorAndTemp &
+
+}
 
 xcheckcombine ( )
 {
@@ -114,15 +124,18 @@ else
 	rm -rf fwhm_lastdata
 	./xFwhmCal_noMatch.sh $Dir_redufile $comimage 
 	wait
+    xsentFwhm &
 	if test ! -s fwhm_lastdata
 	then
 		echo "No ouptut for xFwhmCal_noMatch.sh"
 		echo "No ouptut for xFwhmCal_noMatch.sh"  >>$stringtimeForMonitor
 	else
 		fwhm_comimage=`cat fwhm_lastdata | awk '{print($5)}'`
+		NstarForfwhm=`cat fwhm_lastdata | awk '{print($4)}'`
 		echo "The fwhm for combined image is:"$fwhm_comimage
-		if [ `echo " $fwhm_comimage < 2.0"  | bc ` -eq 1 ]
+		if [ `echo " $fwhm_comimage < 2.0"  | bc ` -eq 1 ] &&  [ `echo " $NstarForfwhm > 300"  | bc ` -eq 1 ]
 		then
+			sethead -kr X TODO=tempMaking $comimage
 			rm -rf newcomlist 
 			touch imcombine.flag
 		        touch xatcopy_remote.flag  #make a flag
@@ -130,12 +143,12 @@ else
 			ipfile=`echo "ip_address_"$ID_MountCamara".dat"`
 		        echo $ipadress $Dir_temp >$ipfile
 			echo "copy the combined image to the temp making computer" >>$stringtimeForMonitor
-		        ./xatcopy_remote.f $ipfile $comimage  $temp_ip $temp_dir"/"$ID_MountCamara
+		        ./xatcopy_remoteimg2.f $ipfile $comimage  $temp_ip $temp_dir"/"$ID_MountCamara
 		        wait
 			#sleep 300  #modified by xlp at 20140826
-		        rm -rf imcombine.flag $comimage newcomlist 
-		else
-			rm -rf imcombine.flag $comimage newcomlist
+		        rm -rf imcombine.flag $comimage newcomlist listupdate 
+		else 
+			rm -rf imcombine.flag $comimage newcomlist listupdate
 			echo "The combined image is not good, fwhm is:" $fwhm_comimage
 			echo "The combined image is not good, fwhm is:" $fwhm_comimage  >>$stringtimeForMonitor
 		fi
@@ -184,25 +197,26 @@ fi
 xCheckFirstMaking ( )
 {
 	if test -r $errorimage
-        then
-		echo "have error image flag" >>$stringtimeForMonitor
-                rm -rf xatcopy_remote.flag notemp.flag $errorimage newcomlist
-        fi
+    then
+	echo "have error image flag" >>$stringtimeForMonitor
+            rm -rf xatcopy_remote.flag notemp.flag $errorimage newcomlist
+    fi
 
-        if test -r xatcopy_remote.flag
-        then
-		echo "first have xatcopy_remote.flag" >>$stringtimeForMonitor
-                echo "first have xatcopy_remote.flag"
-                #sleep 180 #modified by xlp at 20140826 
-		ls $fitfile >>xMissmatch.list
-		xfits2jpg &
-		./xFwhmCal_noMatch.sh $Dir_redufile $fitfile
-		wait
-#                continue
-        else
-                xcheckcombine
-#                wait
-        fi
+    if test -r xatcopy_remote.flag
+    then
+	echo "first have xatcopy_remote.flag" >>$stringtimeForMonitor
+            echo "first have xatcopy_remote.flag"
+            #sleep 180 #modified by xlp at 20140826 
+	ls $fitfile >>xMissmatch.list
+	xfits2jpg &
+	./xFwhmCal_noMatch.sh $Dir_redufile $fitfile
+	wait
+    xsentFwhm &
+#            continue
+    else
+            xcheckcombine
+#            wait
+    fi
 
 }
 
@@ -217,11 +231,14 @@ then
                 ra1_xcheckresult=`cat xcheckResult | awk '{print($1)}'`
                 dec1_xcheckresult=`cat xcheckResult | awk '{print($2)}'`
                 idCama_xcheckresult=`cat xcheckResult | awk '{print($3)}'`
+		ra_sky_xcheckresult=`cat xcheckResult | awk '{print($4)}'`
+		dec_sky_xcheckresult=`cat xcheckResult | awk '{print($5)}'`
                 if [ "$ra_mount" != "$ra1_xcheckresult" ]  ||  [ "$dec_mount" != "$dec1_xcheckresult" ] || [ "$ID_MountCamara" != "$idCama_xcheckresult" ]
                 then
                         xcheckskyfield
                         rm -rf noupdate.flag
                 else
+		        sethead -kr X RAsky=$dec_sky_xcheckresult DECsky=$dec_sky_xcheckresult $fitfile	
 			xcopytemp
 	
                 fi
@@ -339,6 +356,14 @@ rm -rf $ccdimgjpg
 
 XtellCCDtype ( )
 {
+echo "====xtellCCDtype===="
+ Nimhead=`imhead $FILE | wc -l | awk '{print($1)}'`
+ echo $Nimhead
+ if [ ` echo " $Nimhead < 50 " | bc ` -eq 1 ]
+ then
+     echo "imhead is not complete, waiting 1 second"
+     sleep 1
+ fi
  xwfits2fit  #if it is a fits
   #&&&&&&&&&&&&&&&&&&#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@   # if it is a fit
   #echo "---------no need to do the xwfits2fit-------"
@@ -358,9 +383,17 @@ XtellCCDtype ( )
   ID_ccdtype=`gethead "CCDTYPE" $fitfile`
   if  [ "$ID_ccdtype"x = "OBJECT"x ] # it is an object image
   then 
+    #  if test -r recopy_WrongCCDtype.flag
+    #  then
+    #      rm recopy_WrongCCDtype.flag
+    #  fi
 	  xcheckAndMakeTemp
   elif  [ "$ID_ccdtype"x = "DARK"x ]  #it is a dark image
   then
+    #  if test -r recopy_WrongCCDtype.flag
+    #  then
+    #      rm recopy_WrongCCDtype.flag
+    #  fi
           ls $fitfile >>listdark
           line_darklist=`wc -l listdark | awk '{print($1)}'`
           if [ $line_darklist -gt 10 ]
@@ -379,6 +412,10 @@ XtellCCDtype ( )
           fi
   elif [ "$ID_ccdtype"x = "FLAT"x ]  # it is a flat image
   then
+    #  if test -r recopy_WrongCCDtype.flag
+    #  then
+    #      rm recopy_WrongCCDtype.flag
+    #  fi
           ls $fitfile >>listflat
           line_flatlist=`wc -l listflat | awk '{print($1)}'`
           if [ $line_flatlist -gt 10 ]
@@ -395,6 +432,16 @@ XtellCCDtype ( )
           fi
   else   # error image
 	echo "image with wrong ccdtype"
+    #if test ! -r recopy_WrongCCDtype.flag
+    #then
+    #    rm -rf $fitfile 
+    #    rm $Dir_rawdata/$fitfilegz 
+    #    mv $Dir_rawdata/$FILE $Dir_rawdata
+    #    touch recopy_WrongCCDtype.flag
+    #    XtellCCDtype
+    #else  #recopy_WrongCCDtype.flag exist
+    #    rm recopy_WrongCCDtype.flag
+    #fi
   fi
 }
 
@@ -402,18 +449,27 @@ XtellCCDtype ( )
 
 while :
 do
+	rm -rf *Initial*.fits
 	if test ! -r oldlist
 	then
         	touch oldlist
 	fi
 
 	date >time_redu_f
-	if test ! -r M*.fits
-	then
-		sleep 1
-		continue
-	fi	
+#	if test ! -r M*.fits
+#	then
+#		sleep 1
+#		continue
+#	fi	
 	ls *.fits >newlist
+	linenewimage=`cat newlist | wc -l`
+        if [ $linenewimage -eq 0  ]
+        then
+		echo "Waiting new image..."
+                sleep 10
+                continue
+        fi
+
 	diff oldlist newlist | grep  ">" | tr -d '>' | column -t >listmatch1
 	line=`cat listmatch1 | wc -l`
 	if  [ "$line" -ne 0 ]
@@ -440,17 +496,22 @@ do
 				sort oldlist >oldlist1
 				mv oldlist1 oldlist
 			else  # object frames
-                #		cat listmatch1 | grep "_1_" | tail -1 >list # to reduce the new image always, but might miss some image.    
-		#		cp -f list listmatch
-		#		cat listmatch1 >>oldlist
-		#		sort oldlist >oldlist1
-		#		mv oldlist1 oldlist
+    #            		cat listmatch1 | grep -v "_5_" | grep -v "_6_" | tail -1 >list # to reduce the new image always, but might miss some images.   it is might be _1_ for obj or _7_ for temp model 
+	#			cp -f list listmatch
+	#			if test ! -r listreduc
+	#			then
+	#				touch listreduc
+	#			fi
+	#			cat list >>listreduc
+	#			cat listmatch1 >>oldlist
+	#			sort oldlist >oldlist1
+	#			mv oldlist1 oldlist
 
-			    	cat listmatch1  | grep "_1_" | head -1 >list  #head -1 means the image is reduced one by one, which may make the delay for the new image, if we want to make sure that the soft is always reduce the new image, head -1 should be changed to tail -1
-                               cp -f list listmatch
-                               cat list >>oldlist
-                               sort oldlist >oldlist1
-                               mv oldlist1 oldlist
+		    	cat listmatch1  | grep "_1_" | head -1 >list  #head -1 means the image is reduced one by one, which may make the delay for the new image, if we want to make sure that the soft is always reduce the new image, head -1 should be changed to tail -1
+                            cp -f list listmatch
+                            cat list >>oldlist
+                            sort oldlist >oldlist1
+                            mv oldlist1 oldlist
 			
 			fi
                 fi
@@ -476,7 +537,7 @@ do
 		if [ "$fitsMass" -lt 18248 ]
 		then
 			echo "waiting ..."
-			sleep 1
+			sleep 2
 			XtellCCDtype
 			wait
 		else
@@ -541,7 +602,7 @@ do
 			#&&&&&&&&&&&&&&&&&&#@@@@@#@@@@@@@@
 		fi
 	else
-		sleep 15
+		sleep 1
 	fi
 	cd $Dir_rawdata
 done
