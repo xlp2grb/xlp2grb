@@ -7,7 +7,7 @@ gnuplot << EOF
 set term png
 set output "$fwhmpngfile"
 set xlabel "Images"
-set ylabel "FWHM (pixel)"
+set ylabel "FWHM pixel (>1.5 is real)"
 set grid
 set title "$titlefile"
 plot [][*:*] "allxyfwhm.cat.plot" u 1:5 title '' with lp pt 2 ,'fwhm_lastdata' u 1:5  title '' with p pt 5 ps 3

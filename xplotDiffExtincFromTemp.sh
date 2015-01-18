@@ -7,12 +7,12 @@ gnuplot << EOF
 set term png
 set output "$DiffExtincpngfile"
 set xlabel "Images"
-set ylabel "Diff R mag relative to Temp image"
+set ylabel "R_newimg - R_tempimg  (>-4 is real)"
 set grid
 set key left
 set key box
 set title "$titlefile"
-set yrange[] reverse
+#set yrange[] reverse
 plot 'allxyDiffMagCol.cat.plot' u 1:2 w lp pt 6 ps 2 title ''
 reset
 EOF

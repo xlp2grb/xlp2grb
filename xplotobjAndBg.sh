@@ -16,12 +16,11 @@ set grid
 set key left
 set key box
 set title "$titlefile"
-f(x)=0
-plot 'allxyObjNumAndBgBright.cat.plot' u 1:2 w lp pt 6 ps 2 title ''
+plot 'allxyObjNumAndBgBright.cat.plot' u 1:2 title '' w lp pt 6 ps 2
 
 set output "$bgbrightpngfile"
 set ylabel "Bg bright (< $bgbrightlimit)"
-plot [][] 'allxyObjNumAndBgBright.cat.plot' u 1:3 w lp pt 6 ps 2 title ''
+plot [][] 'allxyObjNumAndBgBright.cat.plot' u 1:3 notitle w lp pt 6 ps 2
 reset
 quit
 EOF

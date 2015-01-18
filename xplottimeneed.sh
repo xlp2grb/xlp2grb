@@ -13,7 +13,7 @@ set grid
 set key left
 set key box
 set title "$titlefile"
-plot 'allxytimeNeed.cat.plot' u 1:2 w lp pt 6 ps 2 title ''
+plot [0:*] 'allxytimeNeed.cat.plot' u 1:2 w lp pt 6 ps 2 title ''
 reset
 quit
 EOF

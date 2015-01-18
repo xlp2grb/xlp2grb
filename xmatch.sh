@@ -242,15 +242,15 @@ xSentObjAndBg (  )
 xMakefaulkValueFormonitor_TrackRMSFWHM (  )
 {
     echo "Make a faulk value for Track, RMS and FWHM monitors"
-    echo  "-50.0" $FITFILE "faulk" >>allxyshift.cat
+    echo  "-20.0" $FITFILE "faulk" >>allxyshift.cat
     cat -n allxyshift.cat >allxyshift.cat.plot
 
-    echo  "0.0" $FITFILE "faulk" >>allxyrms.cat
+    echo  "0.0 0.0" $FITFILE "faulk" >>allxyrms.cat
     cat -n allxyrms.cat >allxyrms.cat.plot
     sh xplottrackrms.sh $ID_MountCamara
     wait
 
-    echo $FITFILE "0.0 0.0 0.0 0.0" >>averagefile
+    echo $FITFILE "0.0 0.0 1.5 0.0" >>averagefile
     cat -n averagefile >allxyfwhm.cat.plot
     tail -1 allxyfwhm.cat.plot >fwhm_lastdata
     sh xplotfwhm.sh $ID_MountCamara
@@ -265,7 +265,7 @@ xMakefaulkValueFormonitor_LimitmagDiffmag (  )
     sh xplotLimitmag.sh $ID_MountCamara
     wait
 
-    echo "1.0" $FITFILE "faulk" >>allxyDiffMag.cat
+    echo "-4.0" $FITFILE "faulk" >>allxyDiffMag.cat
     cat -n allxyDiffMag.cat >allxyDiffMagCol.cat.plot
     sh xplotDiffExtincFromTemp.sh $ID_MountCamara
     wait

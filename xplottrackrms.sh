@@ -9,7 +9,7 @@ gnuplot << EOF
 set term png
 set output "$trackpngfile"
 set xlabel "Images"
-set ylabel "Delta pixels relative to temp image"
+set ylabel "Delta pixels (new-temp, -20 is not real)"
 set grid
 set key left
 set key box
@@ -17,7 +17,7 @@ set title "$titlefile"
 f(x)=0
 plot 'allxyshift.cat.plot' u 1:2 w lp pt 6 ps 2 title 'DeltaX','allxyshift.cat.plot' u 1:3 w lp pt 8 ps 2 title 'DeltaY',f(x) w l lt -1 lw 1 title 'Ref'
 set output "$rmspngfile"
-set ylabel "X/Y RMS for xyxymatch"
+set ylabel "X/Y RMS for xyxymatch (>0 is real)"
 plot [][*:0.2] 'allxyrms.cat.plot' u 1:2 w lp pt 6 ps 2 title 'xrms','allxyrms.cat.plot' u 1:3 w lp pt 8 ps 2 title 'yrms'
 reset
 quit

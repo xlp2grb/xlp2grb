@@ -7,7 +7,7 @@ gnuplot << EOF
 set term png
 set output "$limitmagpngfile"
 set xlabel "Images"
-set ylabel "Limit mag in R-band"
+set ylabel "Limit mag in R-band (>10 is real)"
 set grid
 set key left
 set key box
