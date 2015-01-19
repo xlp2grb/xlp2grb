@@ -3,6 +3,7 @@ redu_dir=/data2/workspace/redufile/matchfile
 cd $redu_dir
 echo $redu_dir
 rm -rf *
+#rm -rf ../subfile/*
 
 #copy the code to the reduction files
 cp -r ~/newxgwacmatchsoft/* ./

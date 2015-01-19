@@ -57,9 +57,10 @@ do
 				sleep 10
 				continue
 			fi
+	                echo "================="
 			ccdtype=`ls M*.fit | tail -1  | cut -c4-5 | awk '{print("M"$1)}'`
 			SecondOTlist=`echo $ccdtype".ref.lst"`
-			Command_SecondOTlist=`echo  http://190.168.1.25/getCutImageList.action?dpmName=$ccdtype`
+			Command_SecondOTlist=`echo  http://190.168.1.25/getCutImageRefList.action?dpmName=$ccdtype`
 	#		Command_SecondOTlist=`echo  http://190.168.1.125:8080/gwac/getCutImageList.action?dpmName=$ccdtype`
 			xget2otlistfromxy
 			wait

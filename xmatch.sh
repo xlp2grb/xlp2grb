@@ -10,7 +10,7 @@
 # modified by xlp at 20130110
 #update the codes about the flux match for subimage
 #update the codes about the FWHM calculation for xFhmwCal.sh
-# modifed by xlp at 20130113
+# modifed by xlp at 20130.13
 #reduction time is reduced from 13 sec to 7 sec.
 #rm -rf listsky*
 DIR_data=`pwd`
@@ -31,6 +31,7 @@ sub_dir=/data2/workspace/redufile/subfile
 lc_dir=/data2/workspace/redufile/getlc
 Dir_temp=/data2/workspace/tempfile/result
 trimsubimage_dir=/data2/workspace/redufile/trimsubimage
+trimsubimageForTemp_dir=/data2/workspace/redufile/trimsubimageForTemp
 Alltemplatetable=refcom3d.cat
 temp_dir=/home/gwac/newfile
 temp_ip=`echo 190.168.1.40` #(ip for temp builder at xinglong)
@@ -210,7 +211,7 @@ xSentObjAndBg (  )
 {
     echo "Star num. is : " $NStar_ini
     rm -rf newbgbrightres.cat
-    cp $OUTPUT_ini newbgbright.cat
+    cat $OUTPUT_ini | awk '{if($1>ejmin && $1<ejmax && $2>ejmin && $2<ejmax)print($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)}' ejmin=$ejmin ejmax=$ejmax >newbgbright.cat
     ./xavbgbright 
     wait
     if test ! -r newbgbrightres.cat
@@ -239,34 +240,77 @@ xSentObjAndBg (  )
 
 }
 
-xMakefaulkValueFormonitor_TrackRMSFWHM (  )
+xMakefalseValueFormonitor_TrackRMSFWHM (  )
 {
-    echo "Make a faulk value for Track, RMS and FWHM monitors"
-    echo  "-20.0" $FITFILE "faulk" >>allxyshift.cat
+    echo "Make a false value for Track, RMS and FWHM monitors"
+    if test -s allxyshift.cat
+    then
+    	xshiftfalse=`tail -1 allxyshift.cat | awk '{print($1)}'`
+    	yshiftfalse=`tail -1 allxyshift.cat | awk '{print($2)}'`
+    else
+	xshiftfalse=0.0
+	yshiftfalse=0.0
+    fi
+    echo $xshiftfalse $yshiftfalse $FITFILE "false" >>allxyshift.cat
     cat -n allxyshift.cat >allxyshift.cat.plot
+    cat allxyshift.cat.plot | grep "false" >allxyshiftfalse.cat.plot
 
-    echo  "0.0 0.0" $FITFILE "faulk" >>allxyrms.cat
+    if test -s allxyrms.cat
+    then
+        xrmsfalse=`tail -1 allxyrms.cat | awk '{print($1)}'`
+        yrmsfalse=`tail -1 allxyrms.cat | awk '{print($2)}'`
+    else
+	xrmsfalse=0.1
+	yrmsfalse=0.1
+    fi
+    echo  $xrmsfalse $yrmsfalse $FITFILE "false" >>allxyrms.cat
     cat -n allxyrms.cat >allxyrms.cat.plot
+    cat allxyrms.cat.plot | grep "false" >allxyrmsfalse.cat.plot
     sh xplottrackrms.sh $ID_MountCamara
     wait
 
-    echo $FITFILE "0.0 0.0 1.5 0.0" >>averagefile
+    if test -s averagefile
+    then
+	firstfwhmfalse=`tail -1 averagefile | awk '{print($2)}'`
+	secondfwhmfalse=`tail -1 averagefile | awk '{print($3)}'`
+	thirdfwhmfalse=`tail -1 averagefile | awk '{print($4)}'`
+    else
+	firstfwhmfalse=0.0
+        secondfwhmfalse=0.0
+        thirdfwhmfalse=1.7
+    fi	
+    echo $FITFILE $firstfwhmfalse $secondfwhmfalse $thirdfwhmfalse "false" >>averagefile
     cat -n averagefile >allxyfwhm.cat.plot
+    cat allxyfwhm.cat.plot | grep "false" >allxyfwhmfalse.cat.plot
     tail -1 allxyfwhm.cat.plot >fwhm_lastdata
     sh xplotfwhm.sh $ID_MountCamara
     wait 
 }
 
-xMakefaulkValueFormonitor_LimitmagDiffmag (  )
+xMakefalseValueFormonitor_LimitmagDiffmag (  )
 {
-    echo "Make a faulk value for limitmag and Diffmag monitors"
-    echo  "10.0" $FITFILE "faulk" >>allxyaveragelimit.cat
+    echo "Make a false value for limitmag and Diffmag monitors"
+    if test -s allxyaveragelimit.cat
+    then
+	limitfalse=`tail -1 allxyaveragelimit.cat | awk '{print($1)}'`
+    else
+	limitfalse=12.0
+    fi
+    echo  $limitfalse $FITFILE "false" >>allxyaveragelimit.cat
     cat -n allxyaveragelimit.cat >allxyaveragelimitCol.cat
+    cat allxyaveragelimitCol.cat | grep "false" >allxyaveragelimitfalseCol.cat
     sh xplotLimitmag.sh $ID_MountCamara
     wait
 
-    echo "-4.0" $FITFILE "faulk" >>allxyDiffMag.cat
+    if test -s allxyDiffMag.cat
+    then
+	diffmagfalse=`tail -1 allxyDiffMag.cat | awk '{print($1)}'`
+    else
+	diffmagfalse=0.5
+    fi
+    echo $diffmagfalse $FITFILE "false" >>allxyDiffMag.cat
     cat -n allxyDiffMag.cat >allxyDiffMagCol.cat.plot
+    cat allxyDiffMagCol.cat.plot | grep "false" >allxyDiffMagfalseCol.cat.plot
     sh xplotDiffExtincFromTemp.sh $ID_MountCamara
     wait
 }
@@ -302,9 +346,12 @@ xgetstars (  )
         #	then
         echo "The objects is too small,Star num: " $NStar_ini
         xtimeCal
-        xMakefaulkValueFormonitor_TrackRMSFWHM
-        xMakefaulkValueFormonitor_LimitmagDiffmag
+        xMakefalseValueFormonitor_TrackRMSFWHM
+	wait
+        xMakefalseValueFormonitor_LimitmagDiffmag
+	wait
         xSentFwhmAndTrack
+	wait
         break
         #	else
         #		./xFwhmCal_noMatch.sh $DIR_data $FITFILE
@@ -318,9 +365,12 @@ xgetstars (  )
             echo "Background is too brightness: " $bgbrightness >>$stringtimeForMonitor
             ls $FITFILE >>xMissmatch.lis
             xtimeCal
-            xMakefaulkValueFormonitor_TrackRMSFWHM
-            xMakefaulkValueFormonitor_LimitmagDiffmag
+            xMakefalseValueFormonitor_TrackRMSFWHM
+	    wait
+            xMakefalseValueFormonitor_LimitmagDiffmag
+	    wait
             xSentFwhmAndTrack
+	    wait
             break
             #	elif  [ $bgbrightness -gt $Nbgbright_ini_lowlimit ] #output the  
             #	then
@@ -358,12 +408,18 @@ xreTrack (  )
     else
         echo "The Num. of unmatched image are: "$Nnomatchimg
     fi
-    rm -rf $allfile
     echo $xxshift $yyshift $FITFILE >>allxyshift.cat 
     echo $xrms $yrms $FITFILE >>allxyrms.cat 
+    cat -n allxyshift.cat >allxyshift.cat.plot
+    cat -n allxyrms.cat >allxyrms.cat.plot
+    sh xplottrackrms.sh $ID_MountCamara 
+     wait
     xtimeCal
-    xMakefaulkValueFormonitor_LimitmagDiffmag
+    xMakefalseValueFormonitor_LimitmagDiffmag
+    wait
     xSentFwhmAndTrack
+     wait
+    rm -rf $allfile
     break
 }
 
@@ -377,7 +433,7 @@ xmatchimgtempFailed (  )
     #./xFwhmCal_noMatch.sh $DIR_data $FITFILE
     #xtimeCal
     #break
-    rm -rf $allfile
+    #rm -rf $allfile
 
 }
 
@@ -600,7 +656,7 @@ xmatchimgtemp ( )
                     echo $FITFILE `cat newxyshift.cat` `cat $imagetrans3sd | grep "rms"` "3times" >>list_matchmatss
                     xmatchimgtempFailed 
                 fi
-            else
+            else #faild
                 echo "No $imagetrans3sd created for the third match"
                 echo "xyxymatch failed 3times,No $imagetrans3sd created for the third match" >>$stringtimeForMonitor
                 ls $FITFILE >>xMissmatch.list
@@ -610,7 +666,7 @@ xmatchimgtemp ( )
                 #	xtimeCal
                 #	break
             fi
-        else
+        else #success
             rm deletenewxyshift.cat
             rm -rf xNomatch.flag 
             #	rm xNomatch_lot6c2.py.flag
@@ -1408,7 +1464,9 @@ xCopyandbakResult ( )
 {
     echo "xCopyandbakResult"
     cp $FITFILE $FITFILE_subbg $resfinallog $trimsubimage_dir
-    cp $imagetmp3sd $OUTPUT_new $imagetrans3sd $FITFILE $imagetrans3sd_re $Alltemplatetable $tempfile $tempsubbgfile $Accfile $tempmatchstars $sub_dir
+    cp $FITFILE  $trimsubimageForTemp_dir
+    
+#    cp $imagetmp3sd $OUTPUT_new $imagetrans3sd $FITFILE $imagetrans3sd_re $Alltemplatetable $tempfile $tempsubbgfile $Accfile $tempmatchstars $sub_dir
     #cp $FITFILE $OUTPUT_geoxytran3  $lc_dir
 }
 xbakresult ( )
@@ -1426,8 +1484,8 @@ xbakresult ( )
 
 xInforMonitor (  )
 {
-    cat list_matchmatss | tail -4 >listForMonitor.dat
-    cat listForMonitor.dat fwhm_lastdata | tr '\n' ' ' | awk '{print($3,$2,$4,$5,$7,$9,$10,$18,$11,$13)}' >>listForMonitorall.dat
+    cat list_matchmatss | tail -3 >listForMonitor.dat
+    cat listForMonitor.dat fwhm_lastdata | tr '\n' ' ' | awk '{print($3,$2,$4,$5,$7,$9,$10,$20,$13,$25,"fwhm")}' | column -t >>listForMonitorall.dat
     listMonitorAll=listForMonitorall.dat_`date +%Y%m%d`
     cp listForMonitorall.dat $listMonitorAll 
     cp $listMonitorAll $Dir_monitor
@@ -1473,7 +1531,7 @@ xcheckMatchResult (   )
         echo "Have noupdate.flag"
         ./xFwhmCal_noMatch.sh $DIR_data $FITFILE 
         wait
-        xMakefaulkValueFormonitor_LimitmagDiffmag
+        #xMakefalseValueFormonitor_LimitmagDiffmag
         xSentFwhmAndTrack
         xupdatetemp   #to update the tempfile
     elif [ $NumOT_center -gt 30 ]
@@ -1486,7 +1544,7 @@ xcheckMatchResult (   )
         ls $FITFILE >>xMissmatch.list
         mv newxyshift.cat.bak newxyshift.cat
         #wait
-        xMakefaulkValueFormonitor_LimitmagDiffmag
+        #xMakefalseValueFormonitor_LimitmagDiffmag
         xSentFwhmAndTrack
         xtimeCal
         continue  # The reduction of this image is not good enough, give up. 
@@ -1530,20 +1588,20 @@ do
     xlimitmagcal
     #xlimitmagcal_magbin
     xcrossmatchwith2radius
-    xCheckshiftResult  
-    xcheckMatchResult
+    #xCheckshiftResult  
     xMountTrack & 
+    xcheckMatchResult
     xcctranOT2image
     xFWHMCalandFocus
     xcombineOTInformation
-    xfilterBadpixel
+   # xfilterBadpixel
     #xfilterBrightStars
     xfilterPSF
     #====================
     #might not be used 
     #modified by xlp at 20140901
-    xfilterCV
-    xfilterBrightbg
+   # xfilterCV
+   # xfilterBrightbg
     xOnlyUploadOT
     xSentFwhmAndTrack
     #	xget2sdOT

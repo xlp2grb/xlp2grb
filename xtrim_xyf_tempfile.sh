@@ -7,14 +7,14 @@ then
     echo "no iraf file with the name of iraf_trimtempforOT"
     exit
 fi
-
+Dir_trimforTemp=`pwd`
 Dir_temp=/data2/workspace/tempfile/result
-
+Dir_reduforOT=/data2/workspace/redufile/matchfile
 
 xmkupload (  )
 {
     #echo "---xmkupload---"
-    pnglist=`cat $listotxy | awk '{print($4".fit,",$4".jpg,")}' | tr '\n' ' ' | sed 's/, $//'`
+    pnglist=`cat listotxyforupload | awk '{print($1,","$4,",")}' | tr '\n' ' ' | sed 's/, $//'`
     fitfile=`head -1 $listotxy | awk '{print($1)}'`
     dateobs=`echo $fitfile | cut -c7-12`
     ccdtype=`echo $fitfile | cut -c4-5 | awk '{print("M"$1)}'`
@@ -22,7 +22,9 @@ xmkupload (  )
     configfile=`echo $prefixlog"_cut.properties"`
 
     #echo $crossoutput_sky  $prefixlog $configfile
-    pnguploadlist=`cat $listotxy | awk '{print("-F fileUpload=@"$4".fit","-F fileUpload=@"$4".jpg")}' | tr '\n' ' '`
+    #echo "pnglist are :  "  $pnglist
+    pnguploadlist=`cat listotxyforupload | awk '{print("-F fileUpload=@"$1,"-F fileUpload=@"$4)}' | tr '\n' ' '`
+    #echo "pnguploadlist:  " $pnguploadlist
 
     echo "date=$dateobs
     dpmname=$ccdtype
@@ -38,7 +40,12 @@ xmkupload (  )
     echo "curl http://190.168.1.25/uploadAction.action -F dpmName=$ccdtype  -F currentDirectory=$dateobs -F configFile=@$configfile $pnguploadlist" >xupload2OT.sh
     sh xupload2OT.sh
     wait
-    rm -rf xupload2OT.sh $configfile $pnglist $listotxy *.jpg
+    if test ! -r jpgfilebak
+    then
+	mkdir jpgfilebak
+    fi
+    mv *.jpg jpgfilebak 
+    rm -rf xupload2OT.sh $configfile $pnglist $listotxy *.jpg listotxyforupload listotxyforuploadForcutjpg
     #cd $DIR_data
 }
 
@@ -49,10 +56,14 @@ xcopytemp (   )
     tempfilenamefinal=`echo $Dir_temp"/"$tempfilename`
     # echo $tempfilenamefinal
     echo $tempfilenamefinal >listtemp_dirname  #this file for the update the file xUpdate_refcom3d.cat.sh 
-    cp -fr $tempfilenamefinal/refcom_subbg.fit $Dir_redufile
+    cp -fr $tempfilenamefinal/refcom_subbg.fit $Dir_trimforTemp
     wait
     TempForcutImg=refcom_subbg.fit 
     mv refcom_subbg.fit $TempForcutImg
+    Date_refimage=`gethead $TempForcutImg "D-OBS-UT" | sed 's/-//g'`
+    time_refimage=`gethead $TempForcutImg "T-OBS-UT" | sed 's/://g' | awk '{printf("%.0f\n",$1)}'`
+
+    datetimestring=`echo $Date_refimage"T"$time_refimage`
 }            
 
 
@@ -72,7 +83,6 @@ xcopytempfiletopwd (  )
         continue
     else
         echo "Have GPoint_catalog"
-        echo "Have GPoint_catalog" >>$stringtimeForMonitor
         #   cp $gpfile $Dir_redufile
         cat $gpfile | grep -v "^_" | awk '{if($3!="_")print($1,$2,$3,$4,$5,$6)}'>temp
         cp temp $gpfile
@@ -91,22 +101,14 @@ xcopytempfiletopwd (  )
 
 xyf_fits2jpg ( )
 {
-    #FILEforsub=$1
-    FILEforsub=`echo $TempForcutImg`
-    
-    jpgimg_origin=$2
-    echo "origin name is "$jpgimg_origin
-    Date_refimage=`gethead $TempForcutImg "D-OBS-UT" | sed 's/-//g'`
-    time_refimage=`gethead $TempForcutImg "T-OBS-UT" | sed 's/://g' | awk '{printf("%.0f\n",$1)}'`
-    jpgimg=`echo $jpgimg_origin"_D"$Date_refimage"_UT"$time_refimage".jpg"`
-    echo "modified name is "$jpgimg
-
+    FILEforsub=$1
+    jpgimg=$2
     xim=$3
     yim=$4
     subridus=$5
     
     newlineTest=`echo "$FILEforsub $jpgimg $xim $yim $subridus \" \""`
-    #echo $newlineTest
+    echo $newlineTest
     #echo " python fits_cut_to_png.py $newlineTest"
     python fits_cut_to_png.py $newlineTest
 
@@ -115,8 +117,7 @@ xyf_fits2jpg ( )
 xfit2jpg ( )
 {
     #	echo "============xfit2jpg========="
-    cat $listotxy | awk '{print($1,$4,$2,$3,boxpixel)}' boxpixel=$boxpixel >newfile_listotxy
-
+    cat listotxyforuploadForcutjpg | awk '{print($1,$4,$2,$3,boxpixel)}' boxpixel=$boxpixel >newfile_listotxy
     cat newfile_listotxy | while read line
 do
     #		echo "@@@@@@@@"
@@ -129,7 +130,7 @@ rm -rf newfile_listotxy
 xtrimimage ( )
 {
     #	echo "=======xtrimimage====="
-    cat $listotxy | awk '{print($1,$4".fit",$2,$3,tsize)}' tsize=$boxpixel >newfile_listotxy
+    cat $listotxy | awk '{print($1,$4,$2,$3,tsize)}' tsize=$boxpixel >newfile_listotxy
     cat newfile_listotxy | while read line
 do
     #		echo $line
@@ -143,13 +144,24 @@ xtrimsubimage ( )
     #echo "========xtrimsubimage==========="
 
     FILEforsub=$1
-    imsubname=$2
+    imsubnameOrign=$2
+    jpgimg_origin=$2
     xim=$3
     yim=$4
-    #FILEforsubbg=`echo $FILEforsub | sed 's/\.fit/_subbg.fit/g'`
+    if test ! -r $FILEforsub
+    then
+   	cp $Dir_reduforOT"/"$FILEforsub ./
+    fi
     xcopytempfiletopwd
     wait
+    imsubname=`echo $imsubnameOrign"_"$datetimestring".fit"`
     FILEforsub=`echo $TempForcutImg`
+    echo "@@@@@@@@@@@@@@@@@@@@"
+    jpgimg=`echo $jpgimg_origin"_"$datetimestring".jpg"`
+    echo "modified name is "$jpgimg
+    echo $imsubname $xim $yim $jpgimg >>listotxyforupload
+    echo $FILEforsub $xim $yim $jpgimg >>listotxyforuploadForcutjpg
+     
     #====================
    # if test ! -r $FILEforsub
    # then
@@ -227,10 +239,15 @@ CCDsize_Big=`echo $CCDsize | awk '{print($1-1)}'`
 boxpixel=50
 echo "#############"
 wc -l $listotxy
+cat $listotxy
+sleep 5
 echo "#############"
 xtrimimage $listotxy
 wait
+sleep 5
 xfit2jpg $listotxy
 wait
+sleep 5
 xmkupload
 wait
+sleep 5

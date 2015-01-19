@@ -15,6 +15,11 @@
 #echo $Dir_rawdata
 #echo $Dir_temp
 #echo $Dir_redufile
+Dir_redufile=/data2/workspace/redufile/subfile
+cd $Dir_redufile
+rm -rf *
+cp -rf ~/newxgwacmatchsoft/* ./
+
 ./xmknewfile.sh
 if test -r oldlist
 then

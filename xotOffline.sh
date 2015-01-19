@@ -85,22 +85,25 @@ cd $Dir_redufile
 
 xMainReduction ( )
 {
-	   echo "------xmatch.sh-------"
-	   date
-	   echo "Begin to do the main reduction on OT extractor" >>$stringtimeForMonitor
-           #./xmatch11.cata.sh.20131013
-	   ./xmatch.sh
-           wait
+    if test -r NoTempButSentFwhm.flag       
+    then                                    
+    ┊   rm NoTempButSentFwhm.flag averagefile                               
+    fi 
+	echo "------xmatch.sh-------"
+	date
+	echo "Begin to do the main reduction on OT extractor" >>$stringtimeForMonitor
+	./xmatch.sh
+    wait
 }
 
 
 #==========================================================================================
-xsentFwhm (  )
+xsentFwhmToMonitor (  )
 {
     fwhmrespng=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_fwhm.png")}'`
     mv average_fwhm.png $fwhmrespng
     ./xatcopy_remoteimg.f $fwhmrespng $IPforMonitorAndTemp $Dir_IPforMonitorAndTemp &
-
+    touch NoTempButSentFwhm.flag
 }
 
 xcheckcombine ( )
@@ -124,7 +127,7 @@ else
 	rm -rf fwhm_lastdata
 	./xFwhmCal_noMatch.sh $Dir_redufile $comimage 
 	wait
-    xsentFwhm &
+    xsentFwhmToMonitor &
 	if test ! -s fwhm_lastdata
 	then
 		echo "No ouptut for xFwhmCal_noMatch.sh"
@@ -211,7 +214,7 @@ xCheckFirstMaking ( )
 	xfits2jpg &
 	./xFwhmCal_noMatch.sh $Dir_redufile $fitfile
 	wait
-    xsentFwhm &
+    xsentFwhmToMonitor &
 #            continue
     else
             xcheckcombine
