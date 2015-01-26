@@ -10,6 +10,57 @@ fi
 Dir_trimforTemp=`pwd`
 Dir_temp=/data2/workspace/tempfile/result
 Dir_reduforOT=/data2/workspace/redufile/matchfile
+fitscutpngmonitor=fitscutpng.log
+Dir_monitor=/data2/workspace/monitor                                                                                                              
+stringtimeForMonitorT=`date -u +%Y%m%d`
+Dir_fitscutpngmonitor=`echo $Dir_monitor"/fitscutpng_"$stringtimeForMonitorT".log"`
+
+xwfits2fit (  )                                                                                                                                    
+{  
+    echo "---------xwfits2fit-------"
+    echo "xwfits2fit" >>$fitscutpngmonitor
+    fitfile_prefix=`echo $FILE | sed 's/.fits//'`
+    cd $HOME/iraf_trimtempforOT
+    cp -f login.cl.old login.cl
+    echo noao >> login.cl
+    echo image >> login.cl
+    echo dataio >>login.cl
+    echo "cd $Dir_trimforTemp" >> login.cl
+    echo "wfit(iraf_fil=\"$FILEforsub_FITS\",fits_fil=\"$fitfile_prefix\",fextn=\"fit\",extensi-,global_+,make_im+,long_he-,short_h-,bitpix=16,blockin=0,scale+,      autosca+)" >>login.cl
+    echo logout >>login.cl
+    cl < login.cl >xlogfile
+    #cl <login.cl
+    cd $HOME/iraf_trimtempforOT
+    cp -f login.cl.old login.cl
+    cd $Dir_trimforTemp
+}
+
+
+xcopyNewFileFromRawoDataFile (   )
+{
+    echo "===xcopyNewFileFromRawoDataFile==="
+    ipaddress=`ifconfig | grep "inet" |  awk '{if($5=="broadcast")print($2)}' | cut -c11-12`
+    case $ipaddress in
+    11) filename_prefix=`echo "M1_01"`;;
+    12) filename_prefix=`echo "M1_02"`;;
+    13) filename_prefix=`echo "M2_03"`;;
+    14) filename_prefix=`echo "M2_04"`;;
+    15) filename_prefix=`echo "M3_05"`;;
+    16) filename_prefix=`echo "M3_06"`;;
+    17) filename_prefix=`echo "M4_07"`;;
+    18) filename_prefix=`echo "M4_08"`;;
+    19) filename_prefix=`echo "M5_09"`;;
+    20) filename_prefix=`echo "M5_10"`;;
+    21) filename_prefix=`echo "M6_11"`;;
+    22) filename_prefix=`echo "M6_12"`;;
+    esac
+    utdate=`date -u +%Y%m%d | cut -c3-8`
+    wholefilename=`echo "/data/"$filename_prefix"_"$utdate`
+    FILEforsub_FITS=`echo $FILEforsub | sed 's/.fit/.fits/'`
+    cp $wholefilename"/"$FILEforsub_FITS ./
+    echo "cp "$wholefilename"/"$FILEforsub_FITS"  ./" >>$fitscutpngmonitor 
+    xwfits2fit
+}
 
 xmkupload (  )
 {
@@ -40,12 +91,14 @@ xmkupload (  )
     echo "curl http://190.168.1.25/uploadAction.action -F dpmName=$ccdtype  -F currentDirectory=$dateobs -F configFile=@$configfile $pnguploadlist" >xupload2OT.sh
     sh xupload2OT.sh
     wait
+    echo $pnglist >>$fitscutpngmonitor
     if test ! -r jpgfilebak
     then
-	mkdir jpgfilebak
+        mkdir jpgfilebak
     fi
     mv *.jpg jpgfilebak 
     rm -rf xupload2OT.sh $configfile $pnglist $listotxy *.jpg listotxyforupload listotxyforuploadForcutjpg
+    cp $fitscutpngmonitor $Dir_fitscutpngmonitor
     #cd $DIR_data
 }
 
@@ -58,17 +111,20 @@ xcopytemp (   )
     echo $tempfilenamefinal >listtemp_dirname  #this file for the update the file xUpdate_refcom3d.cat.sh 
     cp -fr $tempfilenamefinal/refcom_subbg.fit $Dir_trimforTemp
     wait
+    echo "copy the $tempfilenamefinal/refcom_subbg.fit to the directory for tempfile " >>$fitscutpngmonitor
     TempForcutImg=refcom_subbg.fit 
-    mv refcom_subbg.fit $TempForcutImg
+   #mv refcom_subbg.fit $TempForcutImg
     Date_refimage=`gethead $TempForcutImg "D-OBS-UT" | sed 's/-//g'`
     time_refimage=`gethead $TempForcutImg "T-OBS-UT" | sed 's/://g' | awk '{printf("%.0f\n",$1)}'`
 
     datetimestring=`echo $Date_refimage"T"$time_refimage`
+    echo $datetimestring >>$fitscutpngmonitor
 }            
 
 
 xcopytempfiletopwd (  )
 {
+    echo "==xcopytempfiletopwd==" >>$fitscutpngmonitor
     ID_MountCamara=`gethead  $FILEforsub "IMAGEID" | cut -c14-17`
     ra1=`gethead $FILEforsub "RA"`
     dec1=`gethead $FILEforsub "DEC" `
@@ -94,6 +150,7 @@ xcopytempfiletopwd (  )
             xcopytemp
         else       
             echo "no tempfile for this field"
+            echo "no tempfile for this field" >>$fitscutpngmonitor
         fi   
     fi
 }
@@ -106,10 +163,12 @@ xyf_fits2jpg ( )
     xim=$3
     yim=$4
     subridus=$5
-    
+
     newlineTest=`echo "$FILEforsub $jpgimg $xim $yim $subridus \" \""`
     echo $newlineTest
     #echo " python fits_cut_to_png.py $newlineTest"
+    echo "==================" >>$fitscutpngmonitor
+    echo "$newlineTest" >>$fitscutpngmonitor
     python fits_cut_to_png.py $newlineTest
 
 }
@@ -134,6 +193,8 @@ xtrimimage ( )
     cat newfile_listotxy | while read line
 do
     #		echo $line
+    echo "================" >>fitscutpng.log
+    echo $line >>$fitscutpngmonitor
     xtrimsubimage $line
 done
 rm -rf newfile_listotxy
@@ -142,15 +203,22 @@ rm -rf newfile_listotxy
 xtrimsubimage ( )
 {
     #echo "========xtrimsubimage==========="
-
+    echo $xtrimsubimage >>$fitscutpngmonitor
     FILEforsub=$1
     imsubnameOrign=$2
     jpgimg_origin=$2
     xim=$3
     yim=$4
-    if test ! -r $FILEforsub
+    if test ! -r $FILEforsub  #in the present directory
     then
-   	cp $Dir_reduforOT"/"$FILEforsub ./
+        if test -r $Dir_reduforOT"/"$FILEforsub  #in the matchfile directory 
+        then
+            cp $Dir_reduforOT"/"$FILEforsub ./   
+        else
+            xcopyNewFileFromRawoDataFile
+        fi
+    else
+        echo "have $FILEforsub in this directory" >>$fitscutpngmonitor
     fi
     xcopytempfiletopwd
     wait
@@ -161,22 +229,22 @@ xtrimsubimage ( )
     echo "modified name is "$jpgimg
     echo $imsubname $xim $yim $jpgimg >>listotxyforupload
     echo $FILEforsub $xim $yim $jpgimg >>listotxyforuploadForcutjpg
-     
+
     #====================
-   # if test ! -r $FILEforsub
-   # then
-   #     echo "no $FILEforsub"
-   #     if test ! -r $FILEforsubbg
-   #     then
-   #         echo "no $FILEforsubbg"
-   #         continue
-   #     fi
-   # fi
+    # if test ! -r $FILEforsub
+    # then
+    #     echo "no $FILEforsub"
+    #     if test ! -r $FILEforsubbg
+    #     then
+    #         echo "no $FILEforsubbg"
+    #         continue
+    #     fi
+    # fi
     #====================
-   # if test -r $FILEforsubbg
-   # then
-   #     FILEforsub=$FILEforsubbg
-   # fi
+    # if test -r $FILEforsubbg
+    # then
+    #     FILEforsub=$FILEforsubbg
+    # fi
     #echo $FILEforsub $imsubname $xim $yim 
     xmin=`echo  $xim | awk '{printf("%.0f", $1-tsize)}' tsize=$boxpixel`
     xmax=`echo  $xim | awk '{printf("%.0f", $1+tsize)}' tsize=$boxpixel`

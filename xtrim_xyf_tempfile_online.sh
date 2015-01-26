@@ -2,6 +2,7 @@
 #to cut the subimage from tempfile
 
 trimsubimage_dir=/data2/workspace/redufile/trimsubimageForTemp
+fitscutpngmonitor=fitscutpng.log
 if test ! -r $trimsubimage_dir
 then
     mkdir $trimsubimage_dir
@@ -33,6 +34,8 @@ xget2otlistfromxy ( )
                 fi
                 #./xtrim_xyf.sh  $SecondOTlist
                 #wait
+                echo "===========" >>$fitscutpngmonitor
+                echo `pwd` >>$fitscutpngmonitor
                 ./xtrim_xyf_tempfile.sh  $SecondOTlist 
 		wait
 		sleep 5
