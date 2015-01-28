@@ -42,12 +42,22 @@ typedef struct
 } ST_STARSTRUCT;
 
 
+struct ST_PIXMAP
+{
+ unsigned int flag;
+ unsigned short matchnum;
+ unsigned char ifcenter;
+
+};
+
+
+
 int CrossMatch(int imgcols,int imgrows,unsigned int maxerr,char imgtablename[],char templatename[],char outfilename[]);
 int pixcorrect(float pixcol,float pixrow,float *deltax,float *deltay);
 unsigned int maxpixcorrect();
 //int CrossMatch_B(int imgcols,int imgrows,unsigned int maxerr,char imgtablename[],char templatename[],char outfilename[]);
 //int CrossMatch_C(int imgcols,int imgrows,unsigned int maxerr,char imgtablename[],char templatename[],char outfilename[]);
-
+int CrossMatch_C(int imgcols,int imgrows,float maxerr,float magerr,char imgtablename[],char templatename[],char outfilename[]);
 
 
 #endif /* CROSSMATCH_H_ */

@@ -52,6 +52,7 @@ xfwhmcalandsent ( )
 #        display average_fwhm.png &
         else
                 echo "No fwhm_lastdata for this image"
+                echo "No fwhm_lastdata for this image" >>$stringtimeForMonitor
         fi
 
 }
@@ -71,6 +72,7 @@ echo $NstarForfwhm
  then
          echo "The objects for fwhm in xFwhmCal_standmag.sh are too small: " $NstarForfwhm
          rm -rf newimageStandxy.db
+         echo "The objects for fwhm in xFwhmCal_standmag.sh are too small: " $NstarForfwhm >>$stringtimeForMonitor
  else
 	 cd $HOME/iraf2
 	 cp -f login.cl.old login.cl
@@ -106,7 +108,8 @@ echo $NstarForfwhm
 		 		xfwhmcalandsent
 		 	fi
 		 else
-		 	echo "No averagefile_new file"
+             echo "No averagefile_new file"
+             echo "No averagefile_new file " >>$stringtimeForMonitor
 		 fi
 	 	
 	 fi

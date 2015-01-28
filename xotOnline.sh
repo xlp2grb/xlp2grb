@@ -17,7 +17,7 @@ dir_basicimage=/data2/workspace/basicfile
 stringtimeForMonitorT=`date -u +%Y%m%d`
 stringtimeForMonitor=`echo $Dir_monitor"listFormonitor_"$stringtimeForMonitorT`
 Dir_rawdata=$1
-Dir_redufile=`pwd`
+Dir_redufile=/data2/workspace/redufile/matchfile
 temp_dir=/home/gwac/newfile  #for the temp maker computer
 temp_ip=`echo 190.168.1.40` #(ip for temp builder at xinglong)
 IPforMonitorAndTemp=`echo 190.168.1.40`
@@ -489,7 +489,6 @@ do
         	touch oldlist
 	fi
 
-	date >time_redu_f
 #	if test ! -r M*.fits
 #	then
 #		sleep 1
@@ -499,8 +498,8 @@ do
 	linenewimage=`cat newlist | wc -l`
         if [ $linenewimage -eq 0  ]
         then
-		echo "Waiting new image..."
-                sleep 10
+		#echo "Waiting new image..."
+                sleep 1
                 continue
         fi
 
@@ -509,6 +508,7 @@ do
 	if  [ "$line" -ne 0 ]
 	then 
 		echo "New image exits!"
+	    date >time_redu_f
 		#diff oldlist newlist | grep  ">" | tr -d '>' | column -t >listmatch1
 		#==========================
 		#just for the sort the image of dark, flat, object frames

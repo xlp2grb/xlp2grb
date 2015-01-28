@@ -53,7 +53,7 @@ crossRedius=1.8
 #crossRedius_inner=1.8
 #crossRedius_outer=1.8
 diffmag=2.0
-PSF_Critical=1.0
+PSF_Critical=1.1
 darkname=Dark.fit
 flatname=Flat_bg.fit
 dir_basicimage=/data2/workspace/basicfile
@@ -64,6 +64,7 @@ maglimitSigma=6
 
 Nstar_ini_limit=3000  #The lower limit of star num. in the image
 Nbgbright_ini_uplimit=7000 #The upper limit of background brightness
+fwhm_uplimit=2.0
 #datenum=`date +%Y%m%d`
 #Nf=0
 #rm -rf matchchb.log matchchb_all.log
@@ -340,7 +341,7 @@ xgetstars (  )
     #echo "Background brightness: " $bgbrightness
     if [ $NStar_ini -lt $Nstar_ini_limit ]
     then
-        echo "Star num. is only: " $NStar_ini ", break" >>$stringtimeForMonitor
+        echo $FITFILE "Star num. is only: " $NStar_ini ", break" >>$stringtimeForMonitor
         ls $FITFILE >>xMissmatch.list
         #	if [ $NStar_ini -lt 3000 ] # cloudy or sunrise, moon phase
         #	then
@@ -362,7 +363,7 @@ xgetstars (  )
         if [ $bgbrightness -gt $Nbgbright_ini_uplimit ] #if the brightness of background is too high, This image shall not reduced and no output for the FWHM
         then
             echo "Background is too brightness: " $bgbrightness
-            echo "Background is too brightness: " $bgbrightness >>$stringtimeForMonitor
+            echo $FITFILE "Background is too brightness: " $bgbrightness >>$stringtimeForMonitor
             ls $FITFILE >>xMissmatch.lis
             xtimeCal
             xMakefalseValueFormonitor_TrackRMSFWHM
@@ -551,7 +552,7 @@ xmatchimgtemp ( )
             yyshift=`cat $imagetrans1sd | grep "yshift" | awk '{print($2)}'`
             echo $xrms $yrms
             #=============================
-            if [ ` echo " $xrms > 5 " | bc ` -eq 1  ] || [ ` echo " $yrms > 5 " | bc ` -eq 1  ]  # if not good enough
+            if [ ` echo " $xrms > 5.0 " | bc ` -eq 1  ] || [ ` echo " $yrms > 5.0 " | bc ` -eq 1  ]  # if not good enough
             then
                 echo "rms after triangle match is too much, this image will be given up."
                 echo $FITFILE `cat newxyshift.cat` `cat $imagetrans3sd | grep "rms"` "2times" >>list_matchmatss
@@ -1235,31 +1236,41 @@ xget2sdOT ( )
 
 xOnlyUploadOT ( )
 {
-    prefixlog=`echo $crossoutput_sky | sed 's/.fit.skyOT//g'`
-    configfile=`echo $prefixlog".properties"`
-    xxdateobs=`echo $dateobs | sed 's/-//g'| cut -c3-8`
-    ccdtype=`echo $crossoutput_sky | cut -c4-5 | awk '{print("M"$1)}'`
-    echo "date=$xxdateobs
-    dpmname=$ccdtype
-    dfinfo=`df -Th /data | tail -1`
-    curprocnumber=`echo $crossoutput_sky | cut -c23-26`
-    otlist=$crossoutput_sky
-    starlist=
-    origimage=
-    cutimages= " >$configfile
-    #echo "==========="
-    #cat  $configfile
-    #echo "==========="
-    #echo $dateobs $xxdateobs
-    #echo "curl  http://190.168.1.25/uploadAction.action -F dpmName=$ccdtype  -F currentDirectory=$xxdateobs -F configFile=@$configfile -F fileUpload=@$crossoutput_sky"
+    if test -s fwhm_lastdata
+    then
+        fwhmnow=`cat fwhm_lastdata | awk '{print($5)}'`
+       if [ ` echo " $fwhmnow > $fwhm_uplimit " | bc ` -eq 1  ]  #if the fwhm >2.0, donot sent the OT file to server
+       then
+             prefixlog=`echo $crossoutput_sky | sed 's/.fit.skyOT//g'`
+             configfile=`echo $prefixlog".properties"`
+             xxdateobs=`echo $dateobs | sed 's/-//g'| cut -c3-8`
+             ccdtype=`echo $crossoutput_sky | cut -c4-5 | awk '{print("M"$1)}'`
+             echo "date=$xxdateobs
+             dpmname=$ccdtype
+             dfinfo=`df -Th /data | tail -1`
+             curprocnumber=`echo $crossoutput_sky | cut -c23-26`
+             otlist=$crossoutput_sky
+             starlist=
+             origimage=
+             cutimages= " >$configfile
+             #echo "==========="
+             #cat  $configfile
+             #echo "==========="
+             #echo $dateobs $xxdateobs
+             #echo "curl  http://190.168.1.25/uploadAction.action -F dpmName=$ccdtype  -F currentDirectory=$xxdateobs -F configFile=@$configfile -F fileUpload=@$crossoutput_sky"
 
-    echo "curl  http://190.168.1.25/uploadAction.action -F dpmName=$ccdtype  -F currentDirectory=$xxdateobs -F configFile=@$configfile -F fileUpload=@$crossoutput_sky" >xupload1ot.sh
+             echo "curl  http://190.168.1.25/uploadAction.action -F dpmName=$ccdtype  -F currentDirectory=$xxdateobs -F configFile=@$configfile -F fileUpload=@$crossoutput_sky" >xupload1ot.sh
 
-    #echo "curl  http://10.36.1.154:8080/svom/uploadAction.action -F dpmName=$ccdtype  -F currentDirectory=$dateobs -F configFile=@$configfile $pnguploadlist" >xupload.sh
-    echo "upload the OT file to the server" >>$stringtimeForMonitor
-    sh xupload1ot.sh
-    #wait
-    #curl http://190.168.1.25:8080/svom/realTimeOtDstImageUpload  -F fileUpload=@$crossoutput_sky
+             echo "upload the OT file to the server" >>$stringtimeForMonitor
+             sh xupload1ot.sh
+             #wait
+             #curl http://190.168.1.25:8080/svom/realTimeOtDstImageUpload  -F fileUpload=@$crossoutput_sky
+       else
+            echo "fwhm $fwhmnow in this image is larger than : " $fwhm_uplimit >>$stringtimeForMonitor
+       fi
+    else
+        echo "no fwhm_lastdata for this image" >>$stringtimeForMonitor
+    fi
 }
 
 
@@ -1575,7 +1586,7 @@ xCheckshiftResult (  )
 
 for FITFILE in `cat listmatch`
 do
-    date "+%H %M %S" >time_redu_f
+   # date "+%H %M %S" >time_redu_f
     xdefinefilename
     xdeleteBeforeresult
     xchangehe

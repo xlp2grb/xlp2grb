@@ -167,7 +167,6 @@ xyf_fits2jpg ( )
     newlineTest=`echo "$FILEforsub $jpgimg $xim $yim $subridus \" \""`
     echo $newlineTest
     #echo " python fits_cut_to_png.py $newlineTest"
-    echo "==================" >>$fitscutpngmonitor
     echo "$newlineTest" >>$fitscutpngmonitor
     python fits_cut_to_png.py $newlineTest
 
@@ -192,8 +191,6 @@ xtrimimage ( )
     cat $listotxy | awk '{print($1,$4,$2,$3,tsize)}' tsize=$boxpixel >newfile_listotxy
     cat newfile_listotxy | while read line
 do
-    #		echo $line
-    echo "================" >>fitscutpng.log
     echo $line >>$fitscutpngmonitor
     xtrimsubimage $line
 done
