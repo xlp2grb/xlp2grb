@@ -20,8 +20,6 @@ xget2otlistfromxy ( )
                 mv $SecondOTlist before.lst
         fi
         wget -O $SecondOTlist $Command_SecondOTlist
-	date >>ot2.log
-	wc $SecondOTlist >>ot2.log
         wait
         if test -s $SecondOTlist
         then
@@ -35,6 +33,8 @@ xget2otlistfromxy ( )
                 #./xtrim_xyf.sh  $SecondOTlist
                 #wait
                 echo "===========" >>$fitscutpngmonitor
+                date >>$fitscutpngmonitor
+                cat $SecondOTlist $fitscutpngmonitor
                 echo `pwd` >>$fitscutpngmonitor
                 ./xtrim_xyf_tempfile.sh  $SecondOTlist 
 		wait

@@ -1247,11 +1247,11 @@ xget2sdOT ( )
 
 xOnlyUploadOT ( )
 {
-    #if test -s fwhm_lastdata
-    #then
-     #   fwhmnow=`cat fwhm_lastdata | awk '{print($5)}'`
-     #  if [ ` echo " $fwhmnow > $fwhm_uplimit " | bc ` -eq 1  ]  #if the fwhm >2.0, donot sent the OT file to server
-     #  then
+    if test -s fwhm_lastdata
+    then
+       fwhmnow=`cat fwhm_lastdata | awk '{print($5)}'`
+       if [ ` echo " $fwhmnow > $fwhm_uplimit " | bc ` -eq 1  ]  #if the fwhm >2.0, donot sent the OT file to server
+       then
              prefixlog=`echo $crossoutput_sky | sed 's/.fit.skyOT//g'`
              configfile=`echo $prefixlog".properties"`
              xxdateobs=`echo $dateobs | sed 's/-//g'| cut -c3-8`
@@ -1276,12 +1276,12 @@ xOnlyUploadOT ( )
              sh xupload1ot.sh
              wait
              #curl http://190.168.1.25:8080/svom/realTimeOtDstImageUpload  -F fileUpload=@$crossoutput_sky
- #      else
- #           echo "fwhm $fwhmnow in this image is larger than : " $fwhm_uplimit >>$stringtimeForMonitor
- #      fi
- #   else
- #       echo "no fwhm_lastdata for this image" >>$stringtimeForMonitor
- #   fi
+       else
+            echo "fwhm $fwhmnow in this image is larger than : " $fwhm_uplimit >>$stringtimeForMonitor
+       fi
+    else
+        echo "no fwhm_lastdata for this image" >>$stringtimeForMonitor
+    fi
 }
 
 
@@ -1508,7 +1508,7 @@ xInforMonitor (  )
 {
     cat list_matchmatss | tail -3 >listForMonitor.dat
     cat listForMonitor.dat fwhm_lastdata | tr '\n' ' ' | awk '{print($3,$2,$4,$5,$7,$9,$10,$20,$13,$25,"fwhm")}' | column -t >>listForMonitorall.dat
-    listMonitorAll=listForMonitorall.dat_`date +%Y%m%d`
+    listMonitorAll=listForMonitorall.dat_`date -u +%Y%m%d`
     cp listForMonitorall.dat $listMonitorAll 
     cp $listMonitorAll $Dir_monitor
     cp allxy*.plot $Dir_monitor_allplot

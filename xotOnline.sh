@@ -87,10 +87,10 @@ xMainReduction ( )
 {
     if test -r NoTempButSentFwhm.flag
     then
-        rm NoTempButSentFwhm.flag averagefile
+        rm NoTempButSentFwhm.flag 
+        #rm NoTempButSentFwhm.flag averagefile
     fi
 	echo "------xmatch.sh-------"
-	date
 	echo "Begin to do the main reduction on OT extractor" >>$stringtimeForMonitor
 	./xmatch.sh
     wait
@@ -126,10 +126,10 @@ else
 	echo "combine last 5 images" >>$stringtimeForMonitor
 	./xcom_withoutshift5images.sh newcomlist $comimage 
 	wait
-	rm -rf fwhm_lastdata
+	#rm -rf fwhm_lastdata
 	./xFwhmCal_noMatch.sh $Dir_redufile $comimage 
 	wait
-    xsentFwhmToMonitor &
+    #xsentFwhmToMonitor &  #modified by xlp at 20150130
 	if test ! -s fwhm_lastdata
 	then
 		echo "No ouptut for xFwhmCal_noMatch.sh"
@@ -216,7 +216,7 @@ xCheckFirstMaking ( )
 	xfits2jpg &
 	./xFwhmCal_noMatch.sh $Dir_redufile $fitfile
 	wait
-    xsentFwhmToMonitor &
+    #xsentFwhmToMonitor &
 #            continue
     else
             xcheckcombine
@@ -360,6 +360,35 @@ wait
 rm -rf $ccdimgjpg
 }
 
+xcheckDarkimgQulity (   )
+{
+rm -rf image.sex                                                                                                                               
+sex $fitfile  -c  xmatchdaofind.sex -DETECT_THRESH 6 -ANALYSIS_THRESH 6 -CATALOG_NAME image.sex -CHECKIMAGE_TYPE BACKGROUND -CHECKIMAGE_NAME $bg  
+rm -rf $bg
+Num_imgquality=`wc -l image.sex | awk '{print($1)}'`
+tempset=`gethead $fitfile "tempset" | awk '{print($1)}'`
+tempact=`gethead $fitfile "tempact" | awk '{print($1)}'`
+Delta_temp=`echo $tempset $tempact | awk '{print($1-$2)}'
+if [ ` echo " $Delta_temp > -5.0 " | bc ` -eq 1 ] && [ ` echo " $Delta_temp < 5.0 " | bc ` -eq 1    ]
+then
+    echo "temparature is normal for dark image"
+else
+    echo $fitfile "is not good for the dark making since the tempact is not as the tempset"
+    echo $fitfile "is not good for the dark making since the tempact is not as the tempset" >>errordarkimg.flag
+    continue
+fi
+echo "source num. in dark image is: " $Num_imgquality
+if [ $Num_imgquality -gt 1000   ]
+then            
+┊   echo $fitfile "is not good for the dark making ! "
+┊   echo $fitfile "is not good !" >>errordarkimg.flag
+┊   continue    
+else
+    echo "This dark image is good"
+fi              
+}
+
+
 XtellCCDtype ( )
 {
 echo "====xtellCCDtype===="
@@ -400,6 +429,7 @@ echo "====xtellCCDtype===="
     #  then
     #      rm recopy_WrongCCDtype.flag
     #  fi
+        xcheckdarkimgqulity
           ls $fitfile >>listdark
           line_darklist=`wc -l listdark | awk '{print($1)}'`
           if [ $line_darklist -gt 10 ]
