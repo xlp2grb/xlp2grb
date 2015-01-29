@@ -5,10 +5,10 @@ titlefile=`echo $titlefileCCD"_"$timenow`
                                             
 objlimit=$2
 bgbrightlimit=$3
-objnumpngfile=objnum.png
-bgbrightpngfile=bgbright.png
+objnumpngfile=objnum.jpg
+bgbrightpngfile=bgbright.jpg
 gnuplot << EOF
-set term png
+set term jpeg enhanced
 set output "$objnumpngfile"
 set xlabel "Images"
 set ylabel "Object Num. detected (> $objlimit)"

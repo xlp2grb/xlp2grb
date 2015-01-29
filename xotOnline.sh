@@ -22,7 +22,7 @@ temp_dir=/home/gwac/newfile  #for the temp maker computer
 temp_ip=`echo 190.168.1.40` #(ip for temp builder at xinglong)
 IPforMonitorAndTemp=`echo 190.168.1.40`
 Dir_IPforMonitorAndTemp=/home/gwac/webForFwhm
-
+UploadParameterfile=`echo http://190.168.1.25/gwacFileReceive`
 echo $Dir_rawdata
 echo $Dir_temp
 echo $Dir_redufile
@@ -67,7 +67,7 @@ cd $HOME/iraf
 cp -f login.cl.old login.cl
 cd $Dir_rawdata
 ls $fitfile >listmatch
-cp -f $fitfile listmatch $Dir_redufile
+cp -f $fitfile listmatch time_redu_f $Dir_redufile
 gzip -f $fitfile
 if test ! -r fitsbakfile
 then
@@ -100,9 +100,10 @@ xMainReduction ( )
 #==========================================================================================
 xsentFwhmToMonitor (  )
 {
-    fwhmrespng=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_fwhm.png")}'`
-    mv average_fwhm.png $fwhmrespng
-    ./xatcopy_remoteimg.f $fwhmrespng $IPforMonitorAndTemp $Dir_IPforMonitorAndTemp &
+    fwhmresjpg=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_fwhm.jpg")}'`
+    mv average_fwhm.jpg $fwhmresjpg
+    curl $UploadParameterfile  -F fileUpload=@$fwhmresjpg
+    #./xatcopy_remoteimg.f $fwhmrespng $IPforMonitorAndTemp $Dir_IPforMonitorAndTemp &
     touch NoTempButSentFwhm.flag
 
 }
@@ -352,40 +353,12 @@ python fits_cut_to_png.py $fitfile $ccdimgjpg 1528 1528 1528 "" &
 wait
 convert -resize 50% $ccdimgjpg temp.jpg
 mv temp.jpg $ccdimgjpg
-curl http://190.168.1.25/realTimeOtDstImageUpload  -F fileUpload=@$ccdimgjpg
+#curl http://190.168.1.25/realTimeOtDstImageUpload  -F fileUpload=@$ccdimgjpg
+curl $UploadParameterfile  -F fileUpload=@$ccdimgjpg
 #./xatcopy_remoteimg.f $ccdimgjpg 190.168.1.40 ~/web & 
 wait
 rm -rf $ccdimgjpg
 }
-
-xcheckDarkimgQulity (  )
-{
-rm -rf image.sex                                                                                                                               
-sex $fitfile  -c  xmatchdaofind.sex -DETECT_THRESH 6 -ANALYSIS_THRESH 6 -CATALOG_NAME image.sex -CHECKIMAGE_TYPE BACKGROUND -CHECKIMAGE_NAME $bg  
-rm -rf $bg
-Num_imgquality=`wc -l image.sex | awk '{print($1)}'`
-tempset=`gethead $fitfile "tempset" | awk '{print($1)}'`
-tempact=`gethead $fitfile "tempact" | awk '{print($1)}'`
-Delta_temp=`echo $tempset $tempact | awk '{print($1-$2)}'
-if [ ` echo " $Delta_temp > -5.0 " | bc ` -eq 1 ] && [ ` echo " $Delta_temp < 5.0 " | bc ` -eq 1   ]
-then
-    echo "temparature is normal for dark image"
-else
-    echo $fitfile "is not good for the dark making since the tempact is not as the tempset"
-    echo $fitfile "is not good for the dark making since the tempact is not as the tempset" >>errordarkimg.flag
-    continue
-fi
-echo "source num. in dark image is: " $Num_imgquality
-if [ $Num_imgquality -gt 1000  ]
-then            
-┊   echo $fitfile "is not good for the dark making ! "
-┊   echo $fitfile "is not good !" >>errordarkimg.flag
-┊   continue    
-else
-    echo "This dark image is good"
-fi              
-}
-
 
 XtellCCDtype ( )
 {
@@ -427,7 +400,6 @@ echo "====xtellCCDtype===="
     #  then
     #      rm recopy_WrongCCDtype.flag
     #  fi
-          xcheckDarkimgQulity
           ls $fitfile >>listdark
           line_darklist=`wc -l listdark | awk '{print($1)}'`
           if [ $line_darklist -gt 10 ]
@@ -499,7 +471,7 @@ do
         if [ $linenewimage -eq 0  ]
         then
 		#echo "Waiting new image..."
-                sleep 1
+                sleep 2
                 continue
         fi
 
@@ -508,7 +480,7 @@ do
 	if  [ "$line" -ne 0 ]
 	then 
 		echo "New image exits!"
-	    date >time_redu_f
+		date "+%H %M %S" >time_redu_f
 		#diff oldlist newlist | grep  ">" | tr -d '>' | column -t >listmatch1
 		#==========================
 		#just for the sort the image of dark, flat, object frames

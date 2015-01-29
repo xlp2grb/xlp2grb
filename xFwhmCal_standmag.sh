@@ -43,7 +43,7 @@ xfwhmcalandsent ( )
         then
                 cat fwhm_lastdata >>$stringtimeForMonitor
                 ./sentfwhm #send the massage to focusor system (huanglei's computer)
-
+                echo "have sent the fwhm to huanglei" >>$stringtimeForMonitor
         #displayPadNum=`ps -all | awk '{if($14=="display") print($4)}'`
         #kill -9 $displayPadNum
         ID_MountCamara=`gethead $FITFILE "IMAGEID"  | cut -c14-17`

@@ -2,11 +2,11 @@ echo "to plot the limit mag"
 titlefileCCD=$1
 timenow=`date -u +%Y%m%d%H%M%S`
 titlefile=`echo $titlefileCCD"_"$timenow`
-limitmagpngfile=Limitmag.png
+limitmagpngfile=Limitmag.jpg
 if test -s allxyaveragelimitfalseCol.cat
 then
 gnuplot << EOF
-set term png
+set term jpeg enhanced
 set output "$limitmagpngfile"
 set xlabel "Images"
 set ylabel "Limit mag in R-band"
@@ -19,7 +19,7 @@ reset
 EOF
 else
 gnuplot << EOF
-set term png
+set term jpeg enhanced
 set output "$limitmagpngfile"
 set xlabel "Images"
 set ylabel "Limit mag in R-band"

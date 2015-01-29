@@ -1,5 +1,5 @@
-set term png
-set output "Limitmag.png"
+set term jpeg enhanced
+set output "Limitmag.jpg"
 set xlabel "Image"
 set ylabel "Limit mag in V band"
 set yrange[] reverse

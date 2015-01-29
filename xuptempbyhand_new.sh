@@ -2,13 +2,39 @@
 
 if [ $# -ne 4 ]
 then
-        echo "usage:command:  xuptempbyhand.sh RA DEC[mount]  CCDID[M1AA] update[or delete] "
+        echo "usage:command:  xuptempbyhand.sh RA DEC[mount]  CCDID[A,B,C,D...] update[or delete] "
         exit 0
 fi
 xra=$1
 xdec=$2
 xccdid=$3
 xdoflag=$4
+
+case $ccdid in A )
+    ccdid=M1AA;;
+B )
+    ccdid=M1AB;;
+C )
+    ccdid=M2AC;;
+D )
+    ccdid=M2AD;;
+E )
+    ccdid=M3AE;;
+F )
+    ccdid=M3AF;;
+G )
+    ccdid=M4AG;;
+H )
+    ccdid=M4AH;;
+I )
+    ccdid=M5AI;;
+J )
+    ccdid=M5AJ;;
+K )
+    ccdid=M6AK;;
+L )
+    ccdid=M6AL;;
+esac
 
 Dir_pres=`pwd`
 Dir_temp=/data2/workspace/tempfile/result

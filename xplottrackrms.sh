@@ -3,12 +3,12 @@ titlefileCCD=$1
 timenow=`date -u +%Y%m%d%H%M%S`
 titlefile=`echo $titlefileCCD"_"$timenow`
                                             
-trackpngfile=Track.png
-rmspngfile=Trackrms.png
+trackpngfile=Track.jpg
+rmspngfile=Trackrms.jpg
 if test -s allxyshiftfalse.cat.plot
 then
 gnuplot << EOF
-set term png
+set term jpeg enhanced
 set output "$trackpngfile"
 set xlabel "Images"
 set ylabel "Delta pixels (new-temp)"
@@ -26,7 +26,7 @@ quit
 EOF
 else
 gnuplot << EOF
-set term png
+set term jpeg enhanced
 set output "$trackpngfile"
 set xlabel "Images"
 set ylabel "Delta pixels (new-temp)"

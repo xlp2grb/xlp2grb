@@ -26,7 +26,7 @@ then
     mkdir $Dir_monitor_allplot
 fi
 #=====================
-
+UploadParameterfile=`echo http://190.168.1.25/gwacFileReceive`
 sub_dir=/data2/workspace/redufile/subfile
 lc_dir=/data2/workspace/redufile/getlc
 Dir_temp=/data2/workspace/tempfile/result
@@ -82,9 +82,10 @@ xtimeCal ( )
     cat -n allxytimeNeed.cat >allxytimeNeed.cat.plot
     sh xplottimeneed.sh $ID_MountCamara  
     wait 
-    timeneedrespng=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_timeneed.png")}'`
-    mv Timeneed.png $timeneedrespng
-    ./xatcopy_remoteimg.f $timeneedrespng  $IPforMonitorAndTemp $Dir_IPforMonitorAndTemp  &
+    timeneedresjpg=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_timeneed.jpg")}'`
+    mv Timeneed.jpg $timeneedresjpg
+    curl $UploadParameterfile  -F fileUpload=@$timeneedresjpg
+    #./xatcopy_remoteimg.f $timeneedrespng  $IPforMonitorAndTemp $Dir_IPforMonitorAndTemp  &
     echo "All were done in  $time_need sec"
     echo `date -u +%T` $timeobs $FITFILE $time_need >>$stringtimeForReduc
 }
@@ -202,8 +203,12 @@ xfits2jpg ( )
     ccdimgjpg=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_ccdimg.jpg")}'`
     python fits_cut_to_png.py $FITFILE_subbg $ccdimgjpg 1528 1528 1528 "" &
     wait
-    curl http://190.168.1.25/realTimeOtDstImageUpload  -F fileUpload=@$ccdimgjpg
-    #./xatcopy_remoteimg.f $ccdimgjpg $IPforMonitorAndTemp ~/web &
+    convert -resize 50% $ccdimgjpg temp.jpg
+    mv temp.jpg $ccdimgjpg
+    curl $UploadParameterfile  -F fileUpload=@$ccdimgjpg
+    #curl http://190.168.1.25/realTimeOtDstImageUpload  -F fileUpload=@$ccdimgjpg
+    
+        #./xatcopy_remoteimg.f $ccdimgjpg $IPforMonitorAndTemp ~/web &
     wait
     rm -rf $ccdimgjpg
 }
@@ -229,13 +234,19 @@ xSentObjAndBg (  )
     cat -n allxyObjNumAndBgBright.cat >allxyObjNumAndBgBright.cat.plot
     sh xplotobjAndBg.sh $ID_MountCamara $Nstar_ini_limit $Nbgbright_ini_uplimit 
     wait
-    objnumrespng=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_objnum.png")}'`
-    bgbrightrespng=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_bgbright.png")}'`
-    mv objnum.png $objnumrespng
-    mv bgbright.png $bgbrightrespng
+    objnumresjpg=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_objnum.jpg")}'`
+    bgbrightresjpg=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_bgbright.jpg")}'`
+    mv objnum.jpg $objnumresjpg
+    curl $UploadParameterfile  -F fileUpload=@$objnumresjpg
+    #wait
+    mv bgbright.jpg $bgbrightresjpg
+    curl $UploadParameterfile  -F fileUpload=@$bgbrightresjpg
+    #wait
     #    ./xatcopy_remoteimg4.f $fwhmrespng  $trackrespng  $limitmagrespng $rmsrespng $IPforMonitorAndTemp $Dir_IPforMonitorAndTemp &
     #./xatcopy_remoteimg3.f $fwhmrespng  $trackrespng  $limitmagrespng $IPforMonitorAndTemp $Dir_IPforMonitorAndTemp &
-    ./xatcopy_remoteimg2.f $objnumrespng  $bgbrightrespng $IPforMonitorAndTemp $Dir_IPforMonitorAndTemp &
+    #modified by xlp at 20150128
+    #######./xatcopy_remoteimg2.f $objnumrespng  $bgbrightrespng $IPforMonitorAndTemp $Dir_IPforMonitorAndTemp &
+
     #    ./xatcopy_remoteimg.f $trackrespng  $IPforMonitorAndTemp ~/webForTrack  &
 
 
@@ -1236,11 +1247,11 @@ xget2sdOT ( )
 
 xOnlyUploadOT ( )
 {
-    if test -s fwhm_lastdata
-    then
-        fwhmnow=`cat fwhm_lastdata | awk '{print($5)}'`
-       if [ ` echo " $fwhmnow > $fwhm_uplimit " | bc ` -eq 1  ]  #if the fwhm >2.0, donot sent the OT file to server
-       then
+    #if test -s fwhm_lastdata
+    #then
+     #   fwhmnow=`cat fwhm_lastdata | awk '{print($5)}'`
+     #  if [ ` echo " $fwhmnow > $fwhm_uplimit " | bc ` -eq 1  ]  #if the fwhm >2.0, donot sent the OT file to server
+     #  then
              prefixlog=`echo $crossoutput_sky | sed 's/.fit.skyOT//g'`
              configfile=`echo $prefixlog".properties"`
              xxdateobs=`echo $dateobs | sed 's/-//g'| cut -c3-8`
@@ -1263,14 +1274,14 @@ xOnlyUploadOT ( )
 
              echo "upload the OT file to the server" >>$stringtimeForMonitor
              sh xupload1ot.sh
-             #wait
+             wait
              #curl http://190.168.1.25:8080/svom/realTimeOtDstImageUpload  -F fileUpload=@$crossoutput_sky
-       else
-            echo "fwhm $fwhmnow in this image is larger than : " $fwhm_uplimit >>$stringtimeForMonitor
-       fi
-    else
-        echo "no fwhm_lastdata for this image" >>$stringtimeForMonitor
-    fi
+ #      else
+ #           echo "fwhm $fwhmnow in this image is larger than : " $fwhm_uplimit >>$stringtimeForMonitor
+ #      fi
+ #   else
+ #       echo "no fwhm_lastdata for this image" >>$stringtimeForMonitor
+ #   fi
 }
 
 
@@ -1509,20 +1520,28 @@ xInforMonitor (  )
 
 xSentFwhmAndTrack (  )
 {
-    fwhmrespng=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_fwhm.png")}'`
-    trackrespng=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_track.png")}'`
-    limitmagrespng=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_limitmag.png")}'`
-    rmsrespng=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_xyrms.png")}'`
-    diffmagrespng=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_diffmag.png")}'`
+    fwhmresjpg=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_fwhm.jpg")}'`
+    trackresjpg=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_track.jpg")}'`
+    limitmagresjpg=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_limitmag.jpg")}'`
+    rmsresjpg=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_xyrms.jpg")}'`
+    diffmagresjpg=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_diffmag.jpg")}'`
     
-    mv average_fwhm.png $fwhmrespng
-    mv Track.png $trackrespng
-    mv Limitmag.png $limitmagrespng
-    mv Trackrms.png $rmsrespng
-    mv DiffExtinc.png $diffmagrespng
-    wait
+    mv average_fwhm.jpg $fwhmresjpg
+    curl $UploadParameterfile  -F fileUpload=@$fwhmresjpg
+    mv Track.jpg $trackresjpg
+    curl $UploadParameterfile  -F fileUpload=@$trackresjpg
+    mv Limitmag.jpg $limitmagresjpg
+    curl $UploadParameterfile  -F fileUpload=@$limitmagresjpg
+    mv Trackrms.jpg $rmsresjpg
+    curl $UploadParameterfile  -F fileUpload=@$rmsresjpg
+    mv DiffExtinc.jpg $diffmagresjpg
+    curl $UploadParameterfile  -F fileUpload=@$diffmagresjpg
     
-    ./xatcopy_remoteimg5.f $fwhmrespng  $trackrespng  $limitmagrespng $rmsrespng $diffmagrespng $IPforMonitorAndTemp $Dir_IPforMonitorAndTemp &
+    ####./xatcopy_remoteimg5.f $fwhmrespng  $trackrespng  $limitmagrespng $rmsrespng $diffmagrespng $IPforMonitorAndTemp $Dir_IPforMonitorAndTemp &
+    
+
+
+
     #./xatcopy_remoteimg4.f $fwhmrespng  $trackrespng  $limitmagrespng $rmsrespng $IPforMonitorAndTemp $Dir_IPforMonitorAndTemp &
     #./xatcopy_remoteimg3.f $fwhmrespng  $trackrespng  $limitmagrespng $IPforMonitorAndTemp $Dir_IPforMonitorAndTemp &
     #  ./xatcopy_remoteimg2.f $fwhmrespng  $trackrespng $IPforMonitorAndTemp $Dir_IPforMonitorAndTemp &
@@ -1554,13 +1573,24 @@ xcheckMatchResult (   )
         echo "no noupdate.flag but the ot num is:"$NumOT_center >>$stringtimeForMonitor
         ls $FITFILE >>xMissmatch.list
         mv newxyshift.cat.bak newxyshift.cat
+
+        ls $FITFILE >>listreupdate 
+        Num_listreupdate=`cat listreupdate | wc -l | awk '{print($1)}'`
+        if [ $Num_listreupdate > 20  ]
+        then
+            ./xuptempbyhand_new.sh $ra_mount $dec_mount $CCDID  update
+        fi
+        
         #wait
         #xMakefalseValueFormonitor_LimitmagDiffmag
         xSentFwhmAndTrack
         xtimeCal
         continue  # The reduction of this image is not good enough, give up. 
-    else
-        :
+    else  #everything is ok
+        if test -r listreupdate
+        then
+            rm listreupdate
+        fi
     fi
 }
 

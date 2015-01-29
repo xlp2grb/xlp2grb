@@ -3,9 +3,9 @@ titlefileCCD=$1
 timenow=`date -u +%Y%m%d%H%M%S`
 titlefile=`echo $titlefileCCD"_"$timenow`
 
-Timeneedpngfile=Timeneed.png
+Timeneedpngfile=Timeneed.jpg
 gnuplot << EOF
-set term png
+set term jpeg enhanced
 set output "$Timeneedpngfile"
 set xlabel "Images"
 set ylabel "Total time for reduction"

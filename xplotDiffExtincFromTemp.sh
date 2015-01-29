@@ -2,11 +2,11 @@ echo "to plot the different extinction relatvie to temp image"
 titlefileCCD=$1
 timenow=`date -u +%Y%m%d%H%M%S`
 titlefile=`echo $titlefileCCD"_"$timenow`
-DiffExtincpngfile=DiffExtinc.png
+DiffExtincpngfile=DiffExtinc.jpg
 if test -s allxyDiffMagfalseCol.cat.plot
 then
 gnuplot << EOF
-set term png
+set term jpeg enhanced
 set output "$DiffExtincpngfile"
 set xlabel "Images"
 set ylabel "R_newimg - R_tempimg"
@@ -20,7 +20,7 @@ reset
 EOF
 else
 gnuplot << EOF
-set term png
+set term jpeg enhanced
 set output "$DiffExtincpngfile"
 set xlabel "Images"
 set ylabel "R_newimg - R_tempimg"
