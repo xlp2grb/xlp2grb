@@ -119,20 +119,20 @@ xdefinefilename ( )
     OUTPUT_fwhm=`echo $FITFILE | sed 's/\.fit/.fit.fwhm/'`			# Output of the FWHM caculation code xFwhmCal_single.sh. 
     OUTPUT_limitmag=`echo $FITFILE | sed 's/\.fit/.fit.limitmag/'`
     bg=`echo $FITFILE | sed 's/\.fit/.bg.fit/'`				# Output of the SourceExtractor. Background image for the new image. 
-    sample_firstTriangle=`echo $FITFILE | sed 's/\.fit/.fit.TriSam1sd.cat/'`
-    sample_secTriangle=`echo $FITFILE | sed 's/\.fit/.fit.TriSam2sd.cat/'`
-    sample_firstTolere=`echo $FITFILE | sed 's/\.fit/.fit.TolSam1sd.cat/'`
-    refnew_xyflux=`echo $FITFILE | sed 's/\.fit/.fit.refnew_xyflux.cat/'`
-    CoordDiff_table=`echo $FITFILE | sed 's/\.fit/.fit.coordiff.cat/'`
+   # sample_firstTriangle=`echo $FITFILE | sed 's/\.fit/.fit.TriSam1sd.cat/'`
+   # sample_secTriangle=`echo $FITFILE | sed 's/\.fit/.fit.TriSam2sd.cat/'`
+   # sample_firstTolere=`echo $FITFILE | sed 's/\.fit/.fit.TolSam1sd.cat/'`
+   # refnew_xyflux=`echo $FITFILE | sed 's/\.fit/.fit.refnew_xyflux.cat/'`
+   # CoordDiff_table=`echo $FITFILE | sed 's/\.fit/.fit.coordiff.cat/'`
     OUTPUT_geoxytran1=`echo $FITFILE | sed 's/\.fit/.fit.tran1/'`
-    OUTPUT_geoxytran2=`echo $FITFILE | sed 's/\.fit/.fit.tran2/'`	# Catalog in the temp frame relatively to the $OUTPUT. Output for the geoxytran 
+   # OUTPUT_geoxytran2=`echo $FITFILE | sed 's/\.fit/.fit.tran2/'`	# Catalog in the temp frame relatively to the $OUTPUT. Output for the geoxytran 
     OUTPUT_geoxytran3=`echo $FITFILE | sed 's/\.fit/.fit.tran3/'`
-    newimageStandxyFis=`echo $FITFILE | sed 's/\.fit/.fit.newStandxy1/'`
-    newimageStandxySecond=`echo $FITFILE | sed 's/\.fit/.fit.newStandxy2/'`
-    newimageOTxySecond=`echo $FITFILE | sed 's/\.fit/.fit.newxyOT2/'`
+   # newimageStandxyFis=`echo $FITFILE | sed 's/\.fit/.fit.newStandxy1/'`
+   # newimageStandxySecond=`echo $FITFILE | sed 's/\.fit/.fit.newStandxy2/'`
+   # newimageOTxySecond=`echo $FITFILE | sed 's/\.fit/.fit.newxyOT2/'`
     newimageOTxyThird=`echo $FITFILE | sed 's/\.fit/.fit.newxyOT3/'`
-    crossoutput_sky_nopsffilter=`echo $FITFILE | sed 's/\.fit/.fit.skyOT_nopsffilter/'`
-    crossoutput_sky_nocvfilter=`echo $FITFILE | sed 's/\.fit/.fit.skyOT_nocvfilter/'`
+   # crossoutput_sky_nopsffilter=`echo $FITFILE | sed 's/\.fit/.fit.skyOT_nopsffilter/'`
+   # crossoutput_sky_nocvfilter=`echo $FITFILE | sed 's/\.fit/.fit.skyOT_nocvfilter/'`
     newimgMaglimit=`echo $FITFILE | sed 's/\.fit/.fit.maglimitbin.png/'`
     xyxymatchResult=`echo $FITFILE | sed 's/\.fit/.fit.xyxymatchDeltaY.png/'`
     echo $FITFILE 
@@ -1126,7 +1126,7 @@ xfilterPSF ( )
     #filter the ot candidates by fwhm, the one whose fwhm is smaller than 1.1 will be deleted as a hot pixel.
     echo "psf filtering"
     cat $crossoutput_sky | awk '{print($3,$4, "  1 a")}' >psf.dat
-    cp $crossoutput_sky $crossoutput_sky_nopsffilter
+   # cp $crossoutput_sky $crossoutput_sky_nopsffilter
     cd $HOME/iraf
     cp -f login.cl.old login.cl
     echo noao >> login.cl
@@ -1166,7 +1166,7 @@ xfilterCV ( )
     if test -r Known_variaStar.cat
     then
         echo "To eject the known CV candidates"
-        cp $crossoutput_sky $crossoutput_sky_nocvfilter
+    #    cp $crossoutput_sky $crossoutput_sky_nocvfilter
         cp $crossoutput_sky newoutput
         ./xAutoEjectVariaStars
         mv newoutputEjected $crossoutput_sky

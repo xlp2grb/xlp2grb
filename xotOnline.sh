@@ -360,32 +360,33 @@ wait
 rm -rf $ccdimgjpg
 }
 
-xcheckDarkimgQulity (   )
+xcheckDarkimgQuality (   )
 {
-rm -rf image.sex                                                                                                                               
-sex $fitfile  -c  xmatchdaofind.sex -DETECT_THRESH 6 -ANALYSIS_THRESH 6 -CATALOG_NAME image.sex -CHECKIMAGE_TYPE BACKGROUND -CHECKIMAGE_NAME $bg  
-rm -rf $bg
-Num_imgquality=`wc -l image.sex | awk '{print($1)}'`
-tempset=`gethead $fitfile "tempset" | awk '{print($1)}'`
-tempact=`gethead $fitfile "tempact" | awk '{print($1)}'`
-Delta_temp=`echo $tempset $tempact | awk '{print($1-$2)}'
-if [ ` echo " $Delta_temp > -5.0 " | bc ` -eq 1 ] && [ ` echo " $Delta_temp < 5.0 " | bc ` -eq 1    ]
-then
-    echo "temparature is normal for dark image"
-else
-    echo $fitfile "is not good for the dark making since the tempact is not as the tempset"
-    echo $fitfile "is not good for the dark making since the tempact is not as the tempset" >>errordarkimg.flag
-    continue
-fi
-echo "source num. in dark image is: " $Num_imgquality
-if [ $Num_imgquality -gt 1000   ]
-then            
-┊   echo $fitfile "is not good for the dark making ! "
-┊   echo $fitfile "is not good !" >>errordarkimg.flag
-┊   continue    
-else
-    echo "This dark image is good"
-fi              
+    rm -rf image.sex                                                                                                                               
+    sex $fitfile  -c  xmatchdaofind.sex -DETECT_THRESH 6 -ANALYSIS_THRESH 6 -CATALOG_NAME image.sex -CHECKIMAGE_TYPE BACKGROUND -CHECKIMAGE_NAME $bg  
+    rm -rf $bg
+    Num_imgquality=`wc -l image.sex | awk '{print($1)}'`
+    tempset=`gethead $fitfile "tempset" | awk '{print($1)}'`
+    tempact=`gethead $fitfile "tempact" | awk '{print($1)}'`
+    Delta_temp=`echo $tempset $tempact | awk '{print($1-$2)}'`
+    if [ ` echo " $Delta_temp > -5.0 " | bc ` -eq 1 ] && [ ` echo " $Delta_temp < 5.0 " | bc ` -eq 1    ]
+    then
+        echo "temparature is normal for dark image"
+    else
+        echo $fitfile "is not good for the dark making since the tempact is not as the tempset"
+        echo $fitfile "is not good for the dark making since the tempact is not as the tempset" >>errordarkimg.flag
+        continue
+    fi
+    
+    echo "source num. in dark image is: " $Num_imgquality
+    if [ $Num_imgquality -gt 1000   ]
+    then            
+    ┊   echo $fitfile "is not good for the dark making ! "
+    ┊   echo $fitfile "is not good !" >>errordarkimg.flag
+    ┊   continue    
+    else
+        echo "This dark image is good"
+    fi              
 }
 
 
@@ -429,7 +430,7 @@ echo "====xtellCCDtype===="
     #  then
     #      rm recopy_WrongCCDtype.flag
     #  fi
-        xcheckdarkimgqulity
+        xcheckDarkimgQuality
           ls $fitfile >>listdark
           line_darklist=`wc -l listdark | awk '{print($1)}'`
           if [ $line_darklist -gt 10 ]
@@ -642,5 +643,3 @@ do
 	fi
 	cd $Dir_rawdata
 done
-
-#===============================================================
