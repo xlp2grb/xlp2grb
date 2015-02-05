@@ -50,9 +50,9 @@ ejmin=300  #3056-(20sqrdegree*3600/29.8arcsec)/2 = 320
 #The difference of 20 pixel makes that two ccds on one mount could be overlap even though the angle of 0.76 degrees  between two CCDs  
 ejmax=`echo $CCDsize | awk '{print($1-ejmin)}' ejmin=$ejmin` 
 crossRedius=1.8
-#crossRedius_inner=1.8
-#crossRedius_outer=1.8
 diffmag=2.0
+crossRedius_inner=1.8
+crossRedius_outer=2.0
 PSF_Critical=1.1
 darkname=Dark.fit
 flatname=Flat_bg.fit
@@ -877,15 +877,21 @@ xlimitmagcal ( )
     #	rm -rf newimg_maglimit.cat
     #==========================================	
 }
-xcrossmatchwith2radius ( ) 
+
+xcrossmatchwith2radius (  )
+{
+echo `date` "crossmatchD"  # cross match between new image and temp in XY spece.
+echo $crossRedius_inner $crossRedius_outer
+./xnewCrossMatchD $crossRedius_inner $crossRedius_outer $OUTPUT_geoxytran3 $Alltemplatetable $crossoutput_xy
+
+}
+xcrossmatchwithR1Merr1 ( ) 
 {
     #======================================================
     echo `date` "crossmatch"  # cross match between new image and temp in XY spece.
     echo $crossRedius $diffmag
-    #        echo $crossRedius_inner $crossRedius_outer $diffmag 
-    #        cp $OUTPUT_geoxytran3 xcrossInnerOuterStar.cat
-    #	./xnewCrossMatch $crossRedius_inner $diffmag xcrossInnerOuterStar.inner $Alltemplatetable output_inner_ot
     ./xnewCrossMatch $crossRedius $diffmag $OUTPUT_geoxytran3 $Alltemplatetable $crossoutput_xy
+
     #select out those at the edge of the image.
     #        cp $crossoutput_xy newoutput_chb.dat
     cat $crossoutput_xy | awk '{if($1>ejmin && $1<ejmax && $2>ejmin && $2<ejmax && $13==2) print($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)}' ejmin=$ejmin ejmax=$ejmax | grep -v "99.000" >$crossoutput_mag   # new variables
@@ -1713,6 +1719,8 @@ do
     #xlimitmagcal_magbin
    echo "xcrossmatchwith2radius " `date` >>$stringtimeForMonitor 
     xcrossmatchwith2radius
+   # echo "xcrossmatchwithR1Merr1" `date` >>$stringtimeForMonitor
+   # xcrossmatchwithR1Merr1
     #xCheckshiftResult  
    echo "xMountTrack " `date` >>$stringtimeForMonitor 
     xMountTrack & 
