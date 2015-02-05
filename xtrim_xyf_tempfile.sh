@@ -10,7 +10,7 @@ fi
 Dir_trimforTemp=`pwd`
 Dir_temp=/data2/workspace/tempfile/result
 Dir_reduforOT=/data2/workspace/redufile/matchfile
-fitscutpngmonitor=fitscutpng.log
+fitscutpngmonitor=fitscutpngfortemp.log
 Dir_monitor=/data2/workspace/monitor                                                                                                              
 stringtimeForMonitorT=`date -u +%Y%m%d`
 Dir_fitscutpngmonitor=`echo $Dir_monitor"/fitscutpng_"$stringtimeForMonitorT".log"`

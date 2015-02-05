@@ -67,7 +67,7 @@ cd $HOME/iraf
 cp -f login.cl.old login.cl
 cd $Dir_rawdata
 ls $fitfile >listmatch
-cp -f $fitfile listmatch $Dir_redufile
+cp -f $fitfile listmatch time_redu_f $Dir_redufile
 gzip -f $fitfile
 if test ! -r fitsbakfile
 then
@@ -457,8 +457,7 @@ do
 	then
         	touch oldlist
 	fi
-
-	date >time_redu_f
+	date "+%H %M %S" >time_redu_f
 #	if test ! -r M*.fits
 #	then
 #		sleep 1

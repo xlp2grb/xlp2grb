@@ -12,7 +12,7 @@ echo imred >>login.cl
 echo ccdred >>login.cl
 echo "cd $DIR_data" >> login.cl
 echo "darkcombine(input=\"@listdark\", output=\"Dark.fit\",combine=\"average\",reject=\"minmax\",ccdtyp=\" \",process-,rdnoise=$rdnoise,gain=$gain,)" >>login.cl
-echo "display(image=\"Dark.fit\",frame=1)" >>login.cl
+#echo "display(image=\"Dark.fit\",frame=1)" >>login.cl
 echo logout >> login.cl
 cl < login.cl >xlogfile 
 cd $HOME/iraf
@@ -23,16 +23,16 @@ sex Dark.fit  -c  xmatchdaofind.sex -DETECT_THRESH 5 -ANALYSIS_THRESH 5 -CATALOG
 cat badpixelFile.db | grep -v "99.0000" >temp
 mv temp badpixelFile.db
 wc badpixelFile.db
-cd $HOME/iraf
-cp -f login.cl.old login.cl
-echo noao >> login.cl
-echo imred >>login.cl
-echo ccdred >>login.cl
-echo "cd $DIR_data" >> login.cl
-echo "tvmark(frame=1,coords=\"badpixelFile.db\",mark=\"circle\",radii=20,color=204,label-)" >>login.cl
-echo logout >> login.cl
-cl < login.cl >xlogfile
-cd $HOME/iraf
-cp -f login.cl.old login.cl
-cd $DIR_data
+#cd $HOME/iraf
+#cp -f login.cl.old login.cl
+#echo noao >> login.cl
+#echo imred >>login.cl
+#echo ccdred >>login.cl
+#echo "cd $DIR_data" >> login.cl
+#echo "tvmark(frame=1,coords=\"badpixelFile.db\",mark=\"circle\",radii=20,color=204,label-)" >>login.cl
+#echo logout >> login.cl
+#cl < login.cl >xlogfile
+#cd $HOME/iraf
+#cp -f login.cl.old login.cl
+#cd $DIR_data
 

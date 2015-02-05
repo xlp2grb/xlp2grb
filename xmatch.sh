@@ -58,12 +58,13 @@ darkname=Dark.fit
 flatname=Flat_bg.fit
 dir_basicimage=/data2/workspace/basicfile
 DIR_CVfile=/data2/workspace/cvfile
+DIR_badpixlefile=/data2/workspace/badpixelfile
 pixelscale=29.8 #arcsec
 DETECT_TH=6
 maglimitSigma=6
 
-Nstar_ini_limit=3000  #The lower limit of star num. in the image
-Nbgbright_ini_uplimit=7000 #The upper limit of background brightness
+Nstar_ini_limit=2000  #The lower limit of star num. in the image
+Nbgbright_ini_uplimit=30000 #The upper limit of background brightness
 fwhm_uplimit=2.0
 #datenum=`date +%Y%m%d`
 #Nf=0
@@ -140,7 +141,6 @@ xdefinefilename ( )
 
 xchangehe ( )
 {
-    echo "================" >> $stringtimeForMonitor
     echo "chang head" >> $stringtimeForMonitor
     delhead $FITFILE "OBSERVAT" "LATITUDE" "LONGITUD"
     cd $HOME/iraf
@@ -1066,46 +1066,102 @@ xcombineOTInformation ( )
     #       timeobs=`gethead $FITFILE "date-obs"`
     dateobs=`gethead $FITFILE "D-OBS-UT"`
     timeobs=`gethead $FITFILE "T-OBS-UT"`
+    echo "NumOT:  " $NumOT
+    if [ $NumOT -gt 0 ]
+    then
+        for ((i=0;i<$NumOT;i++))
+        do
+            echo $dateobs"T"$timeobs $FITFILE >>listtime
+        done
 
-    for ((i=0;i<$NumOT;i++))
-    do
-        echo $dateobs"T"$timeobs $FITFILE >>listtime
-    done
+        #	cat listtime
+        #	echo "============"
+        #	head -1 $crossoutput_sky
+        #	head -1 $newimageOTxyFis
+        #	head -1 $crossoutput_xy
+        #	echo "==========="
+        #	paste $crossoutput_sky $newimageOTxyFis $crossoutput_xy listtime >listpaste
+        #	cat listpaste
+        paste $crossoutput_sky $newimageOTxyFis $crossoutput_xy listtime | awk '{print($1,$2,$11,$12,$21,$22,$31,$32,$3,$4,$5,$6,$7,$8,$9,$10)}' | column -t >crossoutput_skytemp
+         mv crossoutput_skytemp $crossoutput_sky
+        #	head -1 crossoutput_skytemp
+        #	echo "combineOTinformation"
+        #	head -1 $crossoutput_sky
+        #       cp $crossoutput_sky firstsky.dat
+        #	head -1 $crossoutput_sky
+    fi
+}
 
-    #	cat listtime
-    #	echo "============"
-    #	head -1 $crossoutput_sky
-    #	head -1 $newimageOTxyFis
-    #	head -1 $crossoutput_xy
-    #	echo "==========="
-    #	paste $crossoutput_sky $newimageOTxyFis $crossoutput_xy listtime >listpaste
-    #	cat listpaste
-    paste $crossoutput_sky $newimageOTxyFis $crossoutput_xy listtime | awk '{print($1,$2,$11,$12,$21,$22,$31,$32,$3,$4,$5,$6,$7,$8,$9,$10)}' | column -t >crossoutput_skytemp
-    mv crossoutput_skytemp $crossoutput_sky
-    #	head -1 crossoutput_skytemp
-    #	echo "combineOTinformation"
-    #	head -1 $crossoutput_sky
-    #       cp $crossoutput_sky firstsky.dat
-    #	head -1 $crossoutput_sky
+xfilterDarkBadpixel ( )
+{
+    echo "xfilterDarkBadpixel" >>$stringtimeForMonitor
+    #To eject the bad pixel by the crossmatch from $crossoutput_sky and badpixelFile.db
+    #badpixel file from dark image is named as badpixelFile.db
+    #       echo "@@@@@%%%%%%%%&&&&&&&!!!!!!!!!!!!!!!!"
+    #       wc $crossoutput_sky
+    echo "To eject the bad pixel"
+    NumOT=`wc -l $crossoutput_xy | awk '{print($1)}'`
+    if [  $NumOT -gt 0  ] 
+    then
+         cp $crossoutput_sky newoutput
+         ./xAutoEjectBadpixel
+         mv newoutputEjected $crossoutput_sky
+         rm -rf newoutput
+         wc $crossoutput_sky
+         #	head -1 $crossoutput_sky
+    fi
 }
 
 
-xfilterBadpixel ( )
+xfilterBadColumnPixel ( )
 {
-    echo "xfilterBadpixel" >>$stringtimeForMonitor
+    echo "xfilterBadColumnPixel" >>$stringtimeForMonitor
     #To eject the bad pixel by the crossmatch from $crossoutput_sky and badpixelFile.db
     #badpixel file is named as badpixelFile.db
     #       echo "@@@@@%%%%%%%%&&&&&&&!!!!!!!!!!!!!!!!"
     #       wc $crossoutput_sky
-    echo "To eject the bad pixel"
-    cp $crossoutput_sky newoutput
-    ./xAutoEjectBadpixel
-    mv newoutputEjected $crossoutput_sky
-    rm -rf newoutput
-    wc $crossoutput_sky
-    #	head -1 $crossoutput_sky
-
+    echo "To eject the bad column pixel"
+    NumOT=`wc -l $crossoutput_xy | awk '{print($1)}'`
+    if [  $NumOT -gt 0  ] 
+    then
+        cp $DIR_badpixlefile/Known_Columnbadpixel.cat Known_Columnbadpixel.cat
+        if test -s Known_Columnbadpixel.cat
+        then
+            cp $crossoutput_sky newoutput
+             ./xAutoEjectBadColumnpixel
+             mv newoutputEjected $crossoutput_sky
+            rm -rf newoutput
+             wc $crossoutput_sky
+             #	head -1 $crossoutput_sky
+         fi
+    fi
 }
+
+
+xfilterBadSinglePixel ( )
+{
+    echo "xfilterBadSinglepixel" >>$stringtimeForMonitor
+    #To eject the bad pixel by the crossmatch from $crossoutput_sky and badpixelFileForSpecficCCDcolumn.db
+    #badpixel file is named as badpixelFileSpecficCCDcolumn.db
+    #       echo "@@@@@%%%%%%%%&&&&&&&!!!!!!!!!!!!!!!!"
+    #       wc $crossoutput_sky
+    echo "To eject the bad single pixel"
+    NumOT=`wc -l $crossoutput_xy | awk '{print($1)}'`
+    if [  $NumOT -gt 0  ] 
+    then
+        cp $DIR_badpixlefile/Known_Singlebadpixel.cat Known_Singlebadpixel.cat
+        if test -s Known_Singlebadpixel.cat
+        then
+         cp $crossoutput_sky newoutput
+         ./xAutoEjectBadSinglepixel
+         mv newoutputEjected $crossoutput_sky
+         rm -rf newoutput
+         wc $crossoutput_sky
+         #	head -1 $crossoutput_sky
+        fi
+    fi
+}
+
 xfilterBrightStars ( )
 {
 
@@ -1125,35 +1181,39 @@ xfilterPSF ( )
     #========================================
     #filter the ot candidates by fwhm, the one whose fwhm is smaller than 1.1 will be deleted as a hot pixel.
     echo "psf filtering"
-    cat $crossoutput_sky | awk '{print($3,$4, "  1 a")}' >psf.dat
-   # cp $crossoutput_sky $crossoutput_sky_nopsffilter
-    cd $HOME/iraf
-    cp -f login.cl.old login.cl
-    echo noao >> login.cl
-    echo image >> login.cl
-    echo digiphot >> login.cl
-    echo daophot >>login.cl
-    echo "cd $DIR_data" >> login.cl
-    echo "daoedit(\"$FITFILE\", icommand=\"psf.dat\")"  >> login.cl
-    echo logout >> login.cl
-    cl < login.cl  >OUTPUT_PSF
-    mv OUTPUT_PSF $DIR_data
-    cp -f login.cl.old login.cl
-    cd $DIR_data
-    cat OUTPUT_PSF | grep "ERROR" >errormsg
-    if test ! -s errormsg
-    then 
-        cat OUTPUT_PSF | sed -e '/^$/d' | grep '[1-9]' | grep -v "NOAO" | grep -v "This" | grep -v "line" | grep -v "m" >OUTPUT_PSF1
-        #		cat OUTPUT_PSF1
-        #		wc OUTPUT_PSF1
-        #		wc $crossoutput_sky
-        paste OUTPUT_PSF1 $crossoutput_sky | awk '{if($5>PSF_Critical)print($8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)}' PSF_Critical=$PSF_Critical >temp
-        mv temp $crossoutput_sky
-        #		wc  $crossoutput_sky
-        rm -rf errormsg
-    else
-        echo "Error in the psf filter"
-        echo "Error in the psf filter" >>$stringtimeForMonitor
+    NumOT=`wc -l $crossoutput_xy | awk '{print($1)}'`
+    if [  $NumOT -gt 0  ] 
+    then
+       cat $crossoutput_sky | awk '{print($3,$4, "  1 a")}' >psf.dat
+      # cp $crossoutput_sky $crossoutput_sky_nopsffilter
+       cd $HOME/iraf
+       cp -f login.cl.old login.cl
+       echo noao >> login.cl
+       echo image >> login.cl
+       echo digiphot >> login.cl
+       echo daophot >>login.cl
+       echo "cd $DIR_data" >> login.cl
+       echo "daoedit(\"$FITFILE\", icommand=\"psf.dat\")"  >> login.cl
+       echo logout >> login.cl
+       cl < login.cl  >OUTPUT_PSF
+       mv OUTPUT_PSF $DIR_data
+       cp -f login.cl.old login.cl
+       cd $DIR_data
+       cat OUTPUT_PSF | grep "ERROR" >errormsg
+       if test ! -s errormsg
+       then 
+           cat OUTPUT_PSF | sed -e '/^$/d' | grep '[1-9]' | grep -v "NOAO" | grep -v "This" | grep -v "line" | grep -v "m" >OUTPUT_PSF1
+           #		cat OUTPUT_PSF1
+           #		wc OUTPUT_PSF1
+           #		wc $crossoutput_sky
+           paste OUTPUT_PSF1 $crossoutput_sky | awk '{if($5>PSF_Critical)print($8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)}' PSF_Critical=$PSF_Critical >temp
+           mv temp $crossoutput_sky
+           #		wc  $crossoutput_sky
+           rm -rf errormsg
+       else
+           echo "Error in the psf filter"
+           echo "Error in the psf filter" >>$stringtimeForMonitor
+       fi
     fi
 }
 
@@ -1162,19 +1222,23 @@ xfilterCV ( )
     #===========================================
     #filter the ot candidates by known CV or other konw variable stars
     echo "xfilterCV" >>$stringtimeForMonitor
-    cp $DIR_CVfile/Known_variaStar.cat Known_variaStar.cat
-    if test -r Known_variaStar.cat
+    NumOT=`wc -l $crossoutput_xy | awk '{print($1)}'`
+    if [  $NumOT -gt 0  ] 
     then
-        echo "To eject the known CV candidates"
-    #    cp $crossoutput_sky $crossoutput_sky_nocvfilter
-        cp $crossoutput_sky newoutput
-        ./xAutoEjectVariaStars
-        mv newoutputEjected $crossoutput_sky
-        wc $crossoutput_sky
-        rm -rf newoutput
-    else
-        echo "No any known CV candidates"
-        echo "No any known CV candidates" >>$stringtimeForMonitor
+       cp $DIR_CVfile/Known_variaStar.cat Known_variaStar.cat
+       if test -r Known_variaStar.cat
+       then
+           echo "To eject the known CV candidates"
+       #    cp $crossoutput_sky $crossoutput_sky_nocvfilter
+           cp $crossoutput_sky newoutput
+           ./xAutoEjectVariaStars
+           mv newoutputEjected $crossoutput_sky
+           wc $crossoutput_sky
+           rm -rf newoutput
+       else
+           echo "No any known CV candidates"
+           echo "No any known CV candidates" >>$stringtimeForMonitor
+       fi
     fi
 
 }
@@ -1247,11 +1311,11 @@ xget2sdOT ( )
 
 xOnlyUploadOT ( )
 {
-    if test -s fwhm_lastdata
-    then
-       fwhmnow=`cat fwhm_lastdata | awk '{print($5)}'`
-       if [ ` echo " $fwhmnow > $fwhm_uplimit " | bc ` -eq 1  ]  #if the fwhm >2.0, donot sent the OT file to server
-       then
+    #if test -s fwhm_lastdata
+    #then
+    #   fwhmnow=`cat fwhm_lastdata | awk '{print($5)}'`
+    #   if [ ` echo " $fwhmnow > $fwhm_uplimit " | bc ` -eq 1  ]  #if the fwhm >2.0, donot sent the OT file to server
+    #   then
              prefixlog=`echo $crossoutput_sky | sed 's/.fit.skyOT//g'`
              configfile=`echo $prefixlog".properties"`
              xxdateobs=`echo $dateobs | sed 's/-//g'| cut -c3-8`
@@ -1276,12 +1340,12 @@ xOnlyUploadOT ( )
              sh xupload1ot.sh
              wait
              #curl http://190.168.1.25:8080/svom/realTimeOtDstImageUpload  -F fileUpload=@$crossoutput_sky
-       else
-            echo "fwhm $fwhmnow in this image is larger than : " $fwhm_uplimit >>$stringtimeForMonitor
-       fi
-    else
-        echo "no fwhm_lastdata for this image" >>$stringtimeForMonitor
-    fi
+    #   else
+    #        echo "fwhm $fwhmnow in this image is larger than : " $fwhm_uplimit >>$stringtimeForMonitor
+    #   fi
+    #else
+    #    echo "no fwhm_lastdata for this image" >>$stringtimeForMonitor
+    #fi
 }
 
 
@@ -1591,6 +1655,14 @@ xcheckMatchResult (   )
         then
             rm listreupdate
         fi
+#        if [ $NumOT == 0 ]
+#        then
+#            ./xFwhmCal_noMatch.sh $DIR_data $FITFILE 
+#            wait
+#            xSentFwhmAndTrack
+#            xtimeCal
+#            continue
+#        fi
     fi
 }
 
@@ -1617,33 +1689,57 @@ xCheckshiftResult (  )
 for FITFILE in `cat listmatch`
 do
    # date "+%H %M %S" >time_redu_f
-    xdefinefilename
+    echo "================" >> $stringtimeForMonitor
+   echo "xdefinefilename  " `date` >>$stringtimeForMonitor 
+   xdefinefilename
+    
+   echo "xdeleteBeforeresult " `date` >>$stringtimeForMonitor 
     xdeleteBeforeresult
+   echo "xchangehe " `date` >>$stringtimeForMonitor 
     xchangehe
+   echo "xprereduction " `date` >>$stringtimeForMonitor 
     xprereduction
+   echo "xgetkeyWords " `date` >>$stringtimeForMonitor 
     xgetkeyWords
+   echo "xgetstars " `date` >>$stringtimeForMonitor 
     xgetstars
+   echo "xmatchimgtemp " `date` >>$stringtimeForMonitor 
     xmatchimgtemp
     #xplotxyxymatchresult
+   echo "xfluxcalibration " `date` >>$stringtimeForMonitor 
     xfluxcalibration	
+   echo "xlimitmagcal " `date` >>$stringtimeForMonitor 
     xlimitmagcal
     #xlimitmagcal_magbin
+   echo "xcrossmatchwith2radius " `date` >>$stringtimeForMonitor 
     xcrossmatchwith2radius
     #xCheckshiftResult  
+   echo "xMountTrack " `date` >>$stringtimeForMonitor 
     xMountTrack & 
+   echo "xcheckMatchResult " `date` >>$stringtimeForMonitor 
     xcheckMatchResult
+   echo "xcctranOT2image " `date` >>$stringtimeForMonitor 
     xcctranOT2image
+   echo "xFWHMCalandFocus " `date` >>$stringtimeForMonitor 
     xFWHMCalandFocus
+   echo "xcombineOTInformation " `date` >>$stringtimeForMonitor 
     xcombineOTInformation
-   # xfilterBadpixel
+   # xfilterDarkBadpixel
+   echo "xfilterBadColumnPixel " `date` >>$stringtimeForMonitor 
+   xfilterBadColumnPixel
+   echo "xfilterBadSinglePixel " `date` >>$stringtimeForMonitor 
+   xfilterBadSinglePixel
     #xfilterBrightStars
+   echo "xfilterPSF " `date` >>$stringtimeForMonitor 
     xfilterPSF
     #====================
     #might not be used 
     #modified by xlp at 20140901
    # xfilterCV
    # xfilterBrightbg
+   echo "xOnlyUploadOT " `date` >>$stringtimeForMonitor 
     xOnlyUploadOT
+   echo "xSentFwhmAndTrack " `date` >>$stringtimeForMonitor 
     xSentFwhmAndTrack
     #	xget2sdOT
     #	xplotandUploadOT	
@@ -1651,9 +1747,12 @@ do
     #====================	
     #xcut2otimg code is not used any more
     #xcut2otimg
+   echo "xCopyandbakResult " `date` >>$stringtimeForMonitor 
     xCopyandbakResult		
     #xbakresult
+   echo "xInforMonitor " `date` >>$stringtimeForMonitor 
     xInforMonitor
+   echo "xtimeCal " `date` >>$stringtimeForMonitor 
     xtimeCal
 
 done

@@ -2,7 +2,7 @@
 #to cut the subimage from tempfile
 
 trimsubimage_dir=/data2/workspace/redufile/trimsubimageForTemp
-fitscutpngmonitor=fitscutpng.log
+fitscutpngmonitor=fitscutpngfortemp.log
 if test ! -r $trimsubimage_dir
 then
     mkdir $trimsubimage_dir
