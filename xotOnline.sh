@@ -54,6 +54,7 @@ fitfile_prefix=`echo $FILE | sed 's/.fits//'`
 fitfile=`echo $FILE | sed 's/.fits/.fit/'`
 fitfilegz=`echo $FILE | sed 's/.fits/.fit.gz/'`
 #echo $fitfilegz $fitfile
+echo "in xwfits2fit, begin to use iraf " `date` >>$stringtimeForMonitor
 cd $HOME/iraf
 cp -f login.cl.old login.cl
 echo noao >> login.cl
@@ -403,15 +404,20 @@ xcheckDarkimgQuality (   )
 XtellCCDtype ( )
 {
 echo "====xtellCCDtype===="
- Nimhead=`imhead $FILE | wc -l | awk '{print($1)}'`
- echo $Nimhead
- if [ ` echo " $Nimhead < 50 " | bc ` -eq 1 ]
- then
-     echo "imhead is not complete, waiting 1 second"
-     echo "imhead is not complete, waiting 1 second"  `date` >>$stringtimeForMonitor
-     sleep 1
- fi
- xwfits2fit  #if it is a fits
+echo `date` "lsof to read the imhead " `lsof $FILE` >>$stringtimeForMonitor
+lsof $FILE >lsof.cat
+if test -s lsof.cat
+then
+	Nimhead=`imhead $FILE | wc -l | awk '{print($1)}'`
+	if [ ` echo " $Nimhead < 50 " | bc ` -eq 1 ]
+	then
+     		 echo "imhead is not complete"
+    		 echo "imhead is not complete"  `date` >>$stringtimeForMonitor
+ 	fi
+else
+	sleep 2
+fi 
+xwfits2fit  #if it is a fits
   #&&&&&&&&&&&&&&&&&&#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@   # if it is a fit
   #echo "---------no need to do the xwfits2fit-------"
 # fitfile=`echo $FILE | sed 's/.fits/.fit/'`
@@ -427,6 +433,7 @@ echo "====xtellCCDtype===="
 # mv $fitfilegz fitsbakfile
 # cd $Dir_redufile
   #&&&&&&&&&&&&&&&&&&#@@@@@#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+  echo "to read the ccdtype in imhead "  `date` >>$stringtimeForMonitor
   ID_ccdtype=`gethead "CCDTYPE" $fitfile`
   if  [ "$ID_ccdtype"x = "OBJECT"x ] # it is an object image
   then 
@@ -547,15 +554,19 @@ do
 				sort oldlist >oldlist1
 				mv oldlist1 oldlist
 			else  # object frames
+				echo "it is an object image"  `date` >> $stringtimeForMonitor
                 		cat listmatch1 | grep -v "_5_" | grep -v "_6_" | tail -1 >list # to reduce the new image always, but might miss some images.   it is might be _1_ for obj or _7_ for temp model 
 				cp -f list listmatch
+				echo "copy list to listmatch"  `date` >> $stringtimeForMonitor
 				if test ! -r listreduc
 				then
 					touch listreduc
 				fi
 				cat list >>listreduc
 				cat listmatch1 >>oldlist
+				echo "begin to sort the oldlist"  `date` >> $stringtimeForMonitor
 				sort oldlist >oldlist1
+				echo "sort oldlist is over"  `date` >> $stringtimeForMonitor
 				mv oldlist1 oldlist
 
 	#		    	cat listmatch1  | grep "_1_" | head -1 >list  #head -1 means the image is reduced one by one, which may make the delay for the new image, if we want to make sure that the soft is always reduce the new image, head -1 should be changed to tail -1
@@ -578,8 +589,10 @@ do
 		echo $FILE
 		echo $FILE  ` date` >>$stringtimeForMonitor
 		du -a $FILE >mass
+		echo "get the mass of $FILE"  ` date` >>$stringtimeForMonitor
 		fitsMass=`cat mass | awk '{print($1)}'`
-	
+		echo "get the fitsmass value : $fitsmass "  ` date` >>$stringtimeForMonitor
+		
 		#echo "fitsMass =" $fitsMass
 		
 		#if [ "$fitsMass" -lt 36490 ]
@@ -592,6 +605,7 @@ do
 			XtellCCDtype
 			wait
 		else
+			echo "to get the xtellccdtype" `date` >>$stringtimeForMonitor
 			XtellCCDtype
 			wait
 #			xwfits2fit  #if it is a fits

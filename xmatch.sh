@@ -309,8 +309,8 @@ xMakefalseValueFormonitor_LimitmagDiffmag (  )
 	limitfalse=12.0
     fi
     echo  $limitfalse $FITFILE "false" >>allxyaveragelimit.cat
-    cat -n allxyaveragelimit.cat >allxyaveragelimitCol.cat
-    cat allxyaveragelimitCol.cat | grep "false" >allxyaveragelimitfalseCol.cat
+    cat -n allxyaveragelimit.cat >allxyaveragelimitCol.cat.plot
+    cat allxyaveragelimitCol.cat.plot | grep "false" >allxyaveragelimitfalseCol.cat.plot
     sh xplotLimitmag.sh $ID_MountCamara
     wait
 
@@ -858,7 +858,7 @@ xlimitmagcal ( )
     averagelimit=`cat newimg_maglimit_result.cat | awk '{print($1)}'`
     echo "average for the" $maglimitSigma  " sigma limit R magnitude:" $averagelimit >>$stringtimeForMonitor
     echo $averagelimit $FITFILE >>allxyaveragelimit.cat
-    cat -n allxyaveragelimit.cat >allxyaveragelimitCol.cat
+    cat -n allxyaveragelimit.cat >allxyaveragelimitCol.cat.plot
     sh xplotLimitmag.sh $ID_MountCamara
    # gnuplot xplotLimitmag.gn &
 
