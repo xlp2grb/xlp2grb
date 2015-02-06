@@ -883,7 +883,8 @@ xcrossmatchwith2radius (  )
 echo `date` "crossmatchD"  # cross match between new image and temp in XY spece.
 echo $crossRedius_inner $crossRedius_outer
 ./xnewCrossMatchD $crossRedius_inner $crossRedius_outer $OUTPUT_geoxytran3 $Alltemplatetable $crossoutput_xy
-
+cat $crossoutput_xy | awk '{if($1>ejmin && $1<ejmax && $2>ejmin && $2<ejmax && $13==1) print($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)}' ejmin=$ejmin ejmax=$ejmax | grep -v "99.000" >temp 
+ mv temp $crossoutput_xy 
 }
 xcrossmatchwithR1Merr1 ( ) 
 {

@@ -73,10 +73,13 @@ def FitsCutToPng(inputfile, outputfile, x, y, a, s):
     
     tmpImage = f2n.fromfits(inputfile)
     tmpImage.crop(left, right, top, bottom)
-    tmpImage.setzscale("auto", "flat", 3, 100000, 300, 65000)
+    #tmpImage.setzscale("auto", "flat", 3, 100000, 300, 65000)
+    tmpImage.setzscale("flat", "flat", 2, 100000, 300, 65000)
     tmpImage.makepilimage("lin", negative = False)
     if s!="":
-        tmpImage.drawcircle(x, y, 3, (0,255,0), s)
+        #tmpImage.drawcircle(x, y, 3, (0,255,0), s)
+        #modified by xlp at 20150206
+        tmpImage.drawcircle(x, y, 5, (0,255,0), s)
     tmpImage.tonet("tmp.png")
 
     

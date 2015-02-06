@@ -8,21 +8,21 @@
 
 #===============================================================================
 echo "xotOnline.sh newdata_dir"
-Dir_monitor=/data2/workspace/monitor/
+Dir_monitor=/data2/workspace/monitor
 Dir_temp=/data2/workspace/tempfile/result
 dir_basicimage=/data2/workspace/basicfile
 #echo "Please input your data directory"
 #echo "like this: /home/xlp/data/gwac/rawdata/20130113" 
 #read Dir_rawdata
 stringtimeForMonitorT=`date -u +%Y%m%d`
-stringtimeForMonitor=`echo $Dir_monitor"listFormonitor_"$stringtimeForMonitorT`
+stringtimeForMonitor=`echo $Dir_monitor"/reduc_"$stringtimeForMonitorT".log"`
 Dir_rawdata=$1
 Dir_redufile=/data2/workspace/redufile/matchfile
 temp_dir=/home/gwac/newfile  #for the temp maker computer
 temp_ip=`echo 190.168.1.40` #(ip for temp builder at xinglong)
 IPforMonitorAndTemp=`echo 190.168.1.40`
 Dir_IPforMonitorAndTemp=/home/gwac/webForFwhm
-
+UploadParameterfile=`echo http://190.168.1.25/gwacFileReceive`
 echo $Dir_rawdata
 echo $Dir_temp
 echo $Dir_redufile
@@ -48,11 +48,13 @@ rm -rf *Initial*
 xwfits2fit (  )
 {
 echo "---------xwfits2fit-------"
+echo "---------xwfits2fit-------" `date` >>$stringtimeForMonitor
 
 fitfile_prefix=`echo $FILE | sed 's/.fits//'`
 fitfile=`echo $FILE | sed 's/.fits/.fit/'`
 fitfilegz=`echo $FILE | sed 's/.fits/.fit.gz/'`
 #echo $fitfilegz $fitfile
+echo "in xwfits2fit, begin to use iraf " `date` >>$stringtimeForMonitor
 cd $HOME/iraf
 cp -f login.cl.old login.cl
 echo noao >> login.cl
@@ -65,10 +67,12 @@ cl < login.cl >xlogfile
 #cl <login.cl
 cd $HOME/iraf
 cp -f login.cl.old login.cl
+echo "xwfits2fit using iraf is finished " `date` >>$stringtimeForMonitor
 cd $Dir_rawdata
 ls $fitfile >listmatch
 cp -f $fitfile listmatch time_redu_f $Dir_redufile
 gzip -f $fitfile
+echo "gzip the $fitfile " `date` >>$stringtimeForMonitor
 if test ! -r fitsbakfile
 then
 	mkdir fitsbakfile
@@ -78,20 +82,20 @@ mv $fitfilegz $FILE fitsbakfile
 rm -rf $fitfile
 #echo "--------------------"
 cd $Dir_redufile
-
+echo "xwfis2fit is finished " `date` >>$stringtimeForMonitor
 
 }
 
 
 xMainReduction ( )
 {
-    if test -r NoTempButSentFwhm.flag       
-    then                                    
-    ┊   rm NoTempButSentFwhm.flag averagefile                               
-    fi 
+    if test -r NoTempButSentFwhm.flag
+    then
+        rm NoTempButSentFwhm.flag 
+        #rm NoTempButSentFwhm.flag averagefile
+    fi
 	echo "------xmatch.sh-------"
-	date
-	echo "Begin to do the main reduction on OT extractor" >>$stringtimeForMonitor
+	echo "Begin to do the main reduction on OT extractor" `date` >>$stringtimeForMonitor
 	./xmatch.sh
     wait
 }
@@ -100,10 +104,12 @@ xMainReduction ( )
 #==========================================================================================
 xsentFwhmToMonitor (  )
 {
-    fwhmrespng=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_fwhm.png")}'`
-    mv average_fwhm.png $fwhmrespng
-    ./xatcopy_remoteimg.f $fwhmrespng $IPforMonitorAndTemp $Dir_IPforMonitorAndTemp &
+    fwhmresjpg=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_fwhm.jpg")}'`
+    mv average_fwhm.jpg $fwhmresjpg
+    curl $UploadParameterfile  -F fileUpload=@$fwhmresjpg
+    #./xatcopy_remoteimg.f $fwhmrespng $IPforMonitorAndTemp $Dir_IPforMonitorAndTemp &
     touch NoTempButSentFwhm.flag
+
 }
 
 xcheckcombine ( )
@@ -121,22 +127,23 @@ else
         comref=`cat newcomlist | head -1`
         echo $comref
         comimage=`echo $comref | sed 's/\.fit/com.fit/'`
-	echo "combine last 5 images" >>$stringtimeForMonitor
+	echo "combine last 5 images " `date` >>$stringtimeForMonitor
 	./xcom_withoutshift5images.sh newcomlist $comimage 
 	wait
-	rm -rf fwhm_lastdata
+	#rm -rf fwhm_lastdata
 	./xFwhmCal_noMatch.sh $Dir_redufile $comimage 
 	wait
-    xsentFwhmToMonitor &
+    #xsentFwhmToMonitor &  #modified by xlp at 20150130
 	if test ! -s fwhm_lastdata
 	then
 		echo "No ouptut for xFwhmCal_noMatch.sh"
-		echo "No ouptut for xFwhmCal_noMatch.sh"  >>$stringtimeForMonitor
+		echo "No ouptut for xFwhmCal_noMatch.sh "  `date` >>$stringtimeForMonitor
 	else
 		fwhm_comimage=`cat fwhm_lastdata | awk '{print($5)}'`
 		NstarForfwhm=`cat fwhm_lastdata | awk '{print($4)}'`
 		echo "The fwhm for combined image is:"$fwhm_comimage
-		if [ `echo " $fwhm_comimage < 2.0"  | bc ` -eq 1 ] &&  [ `echo " $NstarForfwhm > 300"  | bc ` -eq 1 ]
+		echo "The fwhm for combined image is: "$fwhm_comimage >>$stringtimeForMonitor
+		if [ `echo " $fwhm_comimage < 1.8"  | bc ` -eq 1 ] &&  [ `echo " $NstarForfwhm > 300"  | bc ` -eq 1 ]
 		then
 			sethead -kr X TODO=tempMaking $comimage
 			rm -rf newcomlist 
@@ -145,15 +152,16 @@ else
 			echo "Have imcombine.flag"
 			ipfile=`echo "ip_address_"$ID_MountCamara".dat"`
 		        echo $ipadress $Dir_temp >$ipfile
-			echo "copy the combined image to the temp making computer" >>$stringtimeForMonitor
+			echo "copy the combined image to the temp making computer "  `date`  >>$stringtimeForMonitor
 		        ./xatcopy_remoteimg2.f $ipfile $comimage  $temp_ip $temp_dir"/"$ID_MountCamara
 		        wait
+                echo "copy finished to the temp making computer"  `date` >>$stringtimeForMonitor
 			#sleep 300  #modified by xlp at 20140826
 		        rm -rf imcombine.flag $comimage newcomlist listupdate 
 		else 
 			rm -rf imcombine.flag $comimage newcomlist listupdate
 			echo "The combined image is not good, fwhm is:" $fwhm_comimage
-			echo "The combined image is not good, fwhm is:" $fwhm_comimage  >>$stringtimeForMonitor
+			echo "The combined image is not good, fwhm is:" $fwhm_comimage  ` date `>>$stringtimeForMonitor
 		fi
 	fi
 fi
@@ -170,18 +178,20 @@ xcheckskyfield ( )
 #fi
 
 echo "-------------xcheckskyfield---------------"
+echo "-------------xcheckskyfield---------------"  `date` >>$stringtimeForMonitor
+
 date
 gpfile=`echo $Dir_temp"/"GPoint_catalog`
 errorimage=`echo $Dir_temp"/"errorimage.flag`
 if test ! -r $gpfile
 then
 	echo "no GPoint_catalog"
-	echo "no GPoint_catalog" >>$stringtimeForMonitor
+	echo "no GPoint_catalog" `date` >>$stringtimeForMonitor
 	#echo 0 0 0 0 test test1 >Point_catalog
 	xCheckFirstMaking
 else 
 	echo "Have GPoint_catalog"
-	echo "Have GPoint_catalog" >>$stringtimeForMonitor
+	echo "Have GPoint_catalog " `date` >>$stringtimeForMonitor
 #	cp $gpfile $Dir_redufile
 	cat $gpfile | grep -v "^_" | awk '{if($3!="_")print($1,$2,$3,$4,$5,$6)}'>temp
 	cp temp $gpfile
@@ -201,20 +211,20 @@ xCheckFirstMaking ( )
 {
 	if test -r $errorimage
     then
-	echo "have error image flag" >>$stringtimeForMonitor
+	echo "have error image flag  "  `date` >>$stringtimeForMonitor
             rm -rf xatcopy_remote.flag notemp.flag $errorimage newcomlist
     fi
 
     if test -r xatcopy_remote.flag
     then
-	echo "first have xatcopy_remote.flag" >>$stringtimeForMonitor
+	echo "first have xatcopy_remote.flag" `date`  >>$stringtimeForMonitor
             echo "first have xatcopy_remote.flag"
             #sleep 180 #modified by xlp at 20140826 
 	ls $fitfile >>xMissmatch.list
 	xfits2jpg &
 	./xFwhmCal_noMatch.sh $Dir_redufile $fitfile
 	wait
-    xsentFwhmToMonitor &
+    #xsentFwhmToMonitor &
 #            continue
     else
             xcheckcombine
@@ -254,7 +264,7 @@ fi
 xcopytemp (  )
 {
 		echo "---xcopytemp---"
-		echo "copy the temp from tempfile" >>$stringtimeForMonitor
+		echo "copy the temp from tempfile "  `date` >>$stringtimeForMonitor
 		date
                 rm -rf xatcopy_remote.flag  notemp.flag
 #                echo " ---- The recent temp file is for the new image ---- "
@@ -288,10 +298,10 @@ xcheckAndMakeTemp (  )
 # The parameters to check is use the head of ra and dec for mount in the image
 # To build the temp, sent the image and ip list to the Temp service automatically.
 echo "-----------xcheckAndMakeTemp-------------"
-date
+echo "-----------xcheckAndMakeTemp-------------" `date` >>$stringtimeForMonitor
 #ipadress=`ifconfig | head -2 | tail -1 | sed 's/:/ /g' | awk '{print($2)}'`
 ipadress=`ifconfig | grep "inet" |  awk '{if($5=="broadcast")print($2)}'`
-
+echo "get the $ipadress" `date` >>$stringtimeForMonitor
 #-----------------------------------------------
 #readme the RA DEC from the fits name and set them into the header
 dec_flag=`echo $fitfile | cut -c19-19`
@@ -301,6 +311,7 @@ then
 else
 	dec_temp=`echo $fitfile | cut -c20-21`
 fi
+echo "DEC of $dec_temp is obtained for this $fitfile " `date` >>$stringtimeForMonitor
 ra_flag=`echo $fitfile | cut -c16-16`
 if [ $ra_flag -ne 0 ]
 then
@@ -308,9 +319,9 @@ then
 else
 	ra_temp=`echo $fitfile | cut -c17-18`
 fi
-
+echo "RA of $ra_temp is obtained for this $fitfile " `date` >>$stringtimeForMonitor
 sethead -kr X RA=$ra_temp DEC=$dec_temp  $fitfile
-
+echo "sethead the $ra_temp and $dec_temp to img head of $fitsfile " >>$stringtimeForMonitor  
 #---------------------------------------------------
 
 ID_MountCamara=`gethead  $fitfile "IMAGEID" | cut -c14-17`
@@ -319,19 +330,21 @@ dec1=`gethead $fitfile "DEC" `
 ra_mount=`skycoor -d $ra1 $dec1 | awk '{printf("%.0f\n",$1)}'`
 dec_mount=`skycoor -d $ra1 $dec1 | awk '{printf("%.0f\n",$2)}'`
 echo $ra_mount $dec_mount $ID_MountCamara >newimageCoord
+echo "ra_mount dec_mount and ID_MountCamara are: "$ra_mount $dec_mount $ID_MountCamara `date` >>$stringtimeForMonitor
+
 if test -s newimageCoord.list
 then
 	RaLast=`cat newimageCoord.list | awk '{print($1)}'`
-#	echo $RaLast $ra_mount
+    echo "Ra for last image is:  " $RaLast >>$stringtimeForMonitor 
 	if [ "$RaLast"  != "$ra_mount"  ]
 	then
 		echo "New sky field"
-		echo "New sky field" >>$stringtimeForMonitor
+		echo "New sky field"  `date`  >>$stringtimeForMonitor
 		rm -rf listsky newcomlist newxyshift.cat
 		xcheckskyfield
 	else
 		echo "This sky field is continuing"
-		echo "This sky field is continuing" >>$stringtimeForMonitor
+		echo "This sky field is continuing " `date` >>$stringtimeForMonitor
 		xcheckifcopy
 	fi
 	cp newimageCoord newimageCoord.list
@@ -351,23 +364,60 @@ python fits_cut_to_png.py $fitfile $ccdimgjpg 1528 1528 1528 "" &
 wait
 convert -resize 50% $ccdimgjpg temp.jpg
 mv temp.jpg $ccdimgjpg
-curl http://190.168.1.25/realTimeOtDstImageUpload  -F fileUpload=@$ccdimgjpg
+#curl http://190.168.1.25/realTimeOtDstImageUpload  -F fileUpload=@$ccdimgjpg
+curl $UploadParameterfile  -F fileUpload=@$ccdimgjpg
 #./xatcopy_remoteimg.f $ccdimgjpg 190.168.1.40 ~/web & 
 wait
 rm -rf $ccdimgjpg
 }
 
+xcheckDarkimgQuality (   )
+{
+    rm -rf image.sex                                                                                                                               
+    sex $fitfile  -c  xmatchdaofind.sex -DETECT_THRESH 6 -ANALYSIS_THRESH 6 -CATALOG_NAME image.sex -CHECKIMAGE_TYPE BACKGROUND -CHECKIMAGE_NAME $bg  
+    rm -rf $bg
+    Num_imgquality=`wc -l image.sex | awk '{print($1)}'`
+    tempset=`gethead $fitfile "tempset" | awk '{print($1)}'`
+    tempact=`gethead $fitfile "tempact" | awk '{print($1)}'`
+    Delta_temp=`echo $tempset $tempact | awk '{print($1-$2)}'`
+    if [ ` echo " $Delta_temp > -5.0 " | bc ` -eq 1 ] && [ ` echo " $Delta_temp < 5.0 " | bc ` -eq 1    ]
+    then
+        echo "temparature is normal for dark image"
+    else
+        echo $fitfile "is not good for the dark making since the tempact is not as the tempset"
+        echo $fitfile "is not good for the dark making since the tempact is not as the tempset" >>errordarkimg.flag
+        continue
+    fi
+    
+    echo "source num. in dark image is: " $Num_imgquality
+    if [ $Num_imgquality -gt 1000   ]
+    then            
+    ┊   echo $fitfile "is not good for the dark making ! "
+    ┊   echo $fitfile "is not good !" >>errordarkimg.flag
+    ┊   continue    
+    else
+        echo "This dark image is good"
+    fi              
+}
+
+
 XtellCCDtype ( )
 {
 echo "====xtellCCDtype===="
- Nimhead=`imhead $FILE | wc -l | awk '{print($1)}'`
- echo $Nimhead
- if [ ` echo " $Nimhead < 50 " | bc ` -eq 1 ]
- then
-     echo "imhead is not complete, waiting 1 second"
-     sleep 1
- fi
- xwfits2fit  #if it is a fits
+echo `date` "lsof to read the imhead " `lsof $FILE` >>$stringtimeForMonitor
+lsof $FILE >lsof.cat
+if test ! -s lsof.cat
+then
+	Nimhead=`imhead $FILE | wc -l | awk '{print($1)}'`
+	if [ ` echo " $Nimhead < 50 " | bc ` -eq 1 ]
+	then
+     		 echo "imhead is not complete"
+    		 echo "imhead is not complete"  `date` >>$stringtimeForMonitor
+ 	fi
+else
+	sleep 2
+fi 
+xwfits2fit  #if it is a fits
   #&&&&&&&&&&&&&&&&&&#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@   # if it is a fit
   #echo "---------no need to do the xwfits2fit-------"
 # fitfile=`echo $FILE | sed 's/.fits/.fit/'`
@@ -383,6 +433,7 @@ echo "====xtellCCDtype===="
 # mv $fitfilegz fitsbakfile
 # cd $Dir_redufile
   #&&&&&&&&&&&&&&&&&&#@@@@@#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+  echo "to read the ccdtype in imhead "  `date` >>$stringtimeForMonitor
   ID_ccdtype=`gethead "CCDTYPE" $fitfile`
   if  [ "$ID_ccdtype"x = "OBJECT"x ] # it is an object image
   then 
@@ -397,11 +448,12 @@ echo "====xtellCCDtype===="
     #  then
     #      rm recopy_WrongCCDtype.flag
     #  fi
+        xcheckDarkimgQuality
           ls $fitfile >>listdark
           line_darklist=`wc -l listdark | awk '{print($1)}'`
           if [ $line_darklist -gt 10 ]
           then
-		  echo "dark combination" >>$stringtimeForMonitor
+		  echo "dark combination  " `date`   >>$stringtimeForMonitor
                   ./xdarkcom.sh
                   wait
                   rm -rf *_5_* listdark
@@ -434,7 +486,9 @@ echo "====xtellCCDtype===="
                   echo "flat image is not enough"
           fi
   else   # error image
+
 	echo "image with wrong ccdtype"
+	echo "image with wrong ccdtype"  `date` >>$stringtimeForMonitor
     #if test ! -r recopy_WrongCCDtype.flag
     #then
     #    rm -rf $fitfile 
@@ -452,12 +506,13 @@ echo "====xtellCCDtype===="
 
 while :
 do
+	echo "&&&&&&&&&&&&&&&&  " `date`	>>$stringtimeForMonitor
 	rm -rf *Initial*.fits
 	if test ! -r oldlist
 	then
         	touch oldlist
 	fi
-	date "+%H %M %S" >time_redu_f
+
 #	if test ! -r M*.fits
 #	then
 #		sleep 1
@@ -467,8 +522,8 @@ do
 	linenewimage=`cat newlist | wc -l`
         if [ $linenewimage -eq 0  ]
         then
-		echo "Waiting new image..."
-                sleep 10
+		#echo "Waiting new image..."
+                sleep 2
                 continue
         fi
 
@@ -476,7 +531,8 @@ do
 	line=`cat listmatch1 | wc -l`
 	if  [ "$line" -ne 0 ]
 	then 
-		echo "New image exits!"
+		echo "New image exits! " `date` >>$stringtimeForMonitor
+		date "+%H %M %S" >time_redu_f
 		#diff oldlist newlist | grep  ">" | tr -d '>' | column -t >listmatch1
 		#==========================
 		#just for the sort the image of dark, flat, object frames
@@ -498,22 +554,26 @@ do
 				sort oldlist >oldlist1
 				mv oldlist1 oldlist
 			else  # object frames
-    #            		cat listmatch1 | grep -v "_5_" | grep -v "_6_" | tail -1 >list # to reduce the new image always, but might miss some images.   it is might be _1_ for obj or _7_ for temp model 
-	#			cp -f list listmatch
-	#			if test ! -r listreduc
-	#			then
-	#				touch listreduc
-	#			fi
-	#			cat list >>listreduc
-	#			cat listmatch1 >>oldlist
-	#			sort oldlist >oldlist1
-	#			mv oldlist1 oldlist
+				echo "it is an object image"  `date` >> $stringtimeForMonitor
+                cat listmatch1 | grep -v "_5_" | grep -v "_6_" | head -1 >list # to reduce the new image always, but might miss some images.   it is might be _1_ for obj or _7_ for temp model 
+				cp -f list listmatch
+				echo "copy list to listmatch"  `date` >> $stringtimeForMonitor
+				if test ! -r listreduc
+				then
+					touch listreduc
+				fi
+				cat list >>listreduc
+				cat listmatch >>oldlist
+				echo "begin to sort the oldlist"  `date` >> $stringtimeForMonitor
+				sort oldlist >oldlist1
+				echo "sort oldlist is over"  `date` >> $stringtimeForMonitor
+				mv oldlist1 oldlist
 
-		    	cat listmatch1  | grep "_1_" | head -1 >list  #head -1 means the image is reduced one by one, which may make the delay for the new image, if we want to make sure that the soft is always reduce the new image, head -1 should be changed to tail -1
-                            cp -f list listmatch
-                            cat list >>oldlist
-                            sort oldlist >oldlist1
-                            mv oldlist1 oldlist
+	#		    	cat listmatch1  | grep "_1_" | head -1 >list  #head -1 means the image is reduced one by one, which may make the delay for the new image, if we want to make sure that the soft is always reduce the new image, head -1 should be changed to tail -1
+        #                       cp -f list listmatch
+        #                       cat list >>oldlist
+        #                       sort oldlist >oldlist1
+        #                       mv oldlist1 oldlist
 			
 			fi
                 fi
@@ -527,22 +587,25 @@ do
 
 		FILE=`cat list`
 		echo $FILE
-		echo "&&&&&&&&&&&&&&&&"	>>$stringtimeForMonitor
-		date >>$stringtimeForMonitor
-		echo $FILE >>$stringtimeForMonitor
+		echo $FILE  ` date` >>$stringtimeForMonitor
 		du -a $FILE >mass
+		echo "get the mass of $FILE"  ` date` >>$stringtimeForMonitor
 		fitsMass=`cat mass | awk '{print($1)}'`
-	
+		echo "get the fitsmass value : $fitsmass "  ` date` >>$stringtimeForMonitor
+		
 		#echo "fitsMass =" $fitsMass
 		
 		#if [ "$fitsMass" -lt 36490 ]
+        
 		if [ "$fitsMass" -lt 18248 ]
 		then
 			echo "waiting ..."
 			sleep 2
+            echo "Waiting,  the fitsmass of this fits is: " $fitsMass `date` >>$stringtimeForMonitor
 			XtellCCDtype
 			wait
 		else
+			echo "to get the xtellccdtype" `date` >>$stringtimeForMonitor
 			XtellCCDtype
 			wait
 #			xwfits2fit  #if it is a fits
@@ -608,5 +671,3 @@ do
 	fi
 	cd $Dir_rawdata
 done
-
-#===============================================================
