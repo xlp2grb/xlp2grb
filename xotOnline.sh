@@ -286,7 +286,62 @@ xcopytemp (  )
 }
 
 
+xautoSkyCoordCali (  )
+{
+    echo "xautoSkyCoordCali"
+    /xatcopy_remoteimg.f $fitfile 190.168.1.40 ~/newfile/SkyC &
+    wait
+    touch xmkSkyCoordCalibration.flag
+    continue
+
+}
 #=================================================================================
+xcheckAndMakeTemp_ready (  )
+{
+
+    	RaLast=`cat newimageCoord.list | awk '{print($1)}'`
+    	cp newimageCoord newimageCoord.list
+        echo "Ra for last image is:  " $RaLast >>$stringtimeForMonitor 
+    	if [ "$RaLast"  != "$ra_mount"  ]
+    	then
+    		echo "New sky field"
+    		echo "New sky field"  `date`  >>$stringtimeForMonitor
+    		rm -rf listsky newcomlist newxyshift.cat xatcopy_remote.flag
+    		xcheckskyfield
+    	else
+    		echo "This sky field is continuing"
+    		echo "This sky field is continuing " `date` >>$stringtimeForMonitor
+    		xcheckifcopy
+    	fi
+
+}
+
+xcheckfirstimagequality (  )
+{
+    echo "xcheckfirstimagequality"
+
+    echo "xcheckfirstimagequality" >>$stringtimeForMonitor
+
+     rm -rf image.sex errorSkyCoordCali.flag errorSkyCoordCali_no2CCDworking.flag xmkSkyCoordCalibration.flag
+     sex $fitfile  -c  xmatchdaofind.sex -DETECT_THRESH 6 -ANALYSIS_THRESH 6 -CATALOG_NAME image.sex -CHECKIMAGE_TYPE BACKGROUND -CHECKIMAGE_NAME       $bg
+    rm -rf $bg
+    Num_imgquality=`wc -l image.sex | awk '{print($1)}'`
+    echo "source num. in Sync image is: " $Num_imgquality
+    if [ $Num_imgquality -lt 5000 ]
+    then   
+        rm newimageCoord.list newimageCoord 
+    ┊   echo $fitfile "is not good for Sky coordinate calibration ! "
+    ┊   echo $fitfile "is not good for Sky coordinate calibration !" >> $stringtimeForMonitor
+    ┊   continue
+    else    
+    ┊   echo "This Sync image is good"
+    ┊   echo "This Sync image is good" >>$stringtimeForMonitor
+	    cp newimageCoord newimageCoord.list
+        xautoSkyCoordCali
+    fi      
+}
+
+
 
 xcheckAndMakeTemp (  )
 {
@@ -334,24 +389,38 @@ echo "ra_mount dec_mount and ID_MountCamara are: "$ra_mount $dec_mount $ID_Mount
 
 if test -s newimageCoord.list
 then
-	RaLast=`cat newimageCoord.list | awk '{print($1)}'`
-    echo "Ra for last image is:  " $RaLast >>$stringtimeForMonitor 
-	if [ "$RaLast"  != "$ra_mount"  ]
-	then
-		echo "New sky field"
-		echo "New sky field"  `date`  >>$stringtimeForMonitor
-		rm -rf listsky newcomlist newxyshift.cat xatcopy_remote.flag
-		xcheckskyfield
-	else
-		echo "This sky field is continuing"
-		echo "This sky field is continuing " `date` >>$stringtimeForMonitor
-		xcheckifcopy
-	fi
-	cp newimageCoord newimageCoord.list
-else
-	cp newimageCoord newimageCoord.list
-	xcheckskyfield
+    if test ! -r xmkSkyCoordCalibration.flag 
+    then
+        xcheckAndMakeTemp_ready #all the prepering work is done, to copy the temp and do the xmatch.sh
+    else
+        if test -r errorSkyCoordCali.flag  #Sky coordinate calibration is failed, need to send one more image for sky coordinate calibration.
+        then
+            rm xmkSkyCoordCalibration_Waiting.lst xmkSkyCoordCalibration.flag 
+            xcheckfirstimagequality
+        elif test -r errorSkyCoordCali_no2CCDworking.flag 
+        then
+            echo "There are some CCDs on this mount are not working" >>$stringtimeForMonitor
+            rm -rf xmkSkyCoordCalibration_Waiting.lst xmkSkyCoordCalibration.flag errorSkyCoordCali.flag 
+            xcheckAndMakeTemp_ready
+        else
+             ls $fitfile >>xmkSkyCoordCalibration_Waiting.lst
+             Num_waiting_skyC=`cat xmkSkyCoordCalibration_Waiting.lst`
+             if [ $Num_waiting_skyC -gt 40 ]  #waiting for 10 minites
+             then
+                 rm -rf xmkSkyCoordCalibration.flag xmkSkyCoordCalibration_Waiting.lst
+                 rm -rf xmkSkyCoordCalibration.flag xmkSkyCoordCalibration_Waiting.lst >>$stringtimeForMonitor
+                 xcheckAndMakeTemp_ready
+             else 
+                 echo $fitfile "The Num is $Num_waiting_skyC , waiting for Sky coordinate calibration " >>$stringtimeForMonitor
+                 continue
+             fi
+        fi
+    fi
+else  #no newimageCoord.list, it is means that this is the first normal image for this observation epoch.
+    xcheckfirstimagequality
 fi
+
+
 }
 xfits2jpg ( )
 {
