@@ -340,7 +340,7 @@ then
 	then
 		echo "New sky field"
 		echo "New sky field"  `date`  >>$stringtimeForMonitor
-		rm -rf listsky newcomlist newxyshift.cat
+		rm -rf listsky newcomlist newxyshift.cat xatcopy_remote.flag
 		xcheckskyfield
 	else
 		echo "This sky field is continuing"
