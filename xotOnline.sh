@@ -286,19 +286,10 @@ xcopytemp (  )
 }
 
 
-xautoSkyCoordCali (  )
-{
-    echo "xautoSkyCoordCali"
-    /xatcopy_remoteimg.f $fitfile 190.168.1.40 ~/newfile/SkyC &
-    wait
-    touch xmkSkyCoordCalibration.flag
-    continue
-
-}
 #=================================================================================
 xcheckAndMakeTemp_ready (  )
 {
-
+    echo "xcheckAndMakeTemp_ready" >>$stringtimeForMonitor
     	RaLast=`cat newimageCoord.list | awk '{print($1)}'`
     	cp newimageCoord newimageCoord.list
         echo "Ra for last image is:  " $RaLast >>$stringtimeForMonitor 
@@ -314,6 +305,15 @@ xcheckAndMakeTemp_ready (  )
     		xcheckifcopy
     	fi
 
+}
+
+xautoSkyCoordCali (  )
+{
+    echo "xautoSkyCoordCali"
+    ./xatcopy_remoteimg.f $fitfile 190.168.1.40 ~/newfile/SkyC &
+    wait
+    touch xmkSkyCoordCalibration.flag
+    continue
 }
 
 xcheckfirstimagequality (  )
@@ -404,13 +404,15 @@ then
             xcheckAndMakeTemp_ready
         else
              ls $fitfile >>xmkSkyCoordCalibration_Waiting.lst
-             Num_waiting_skyC=`cat xmkSkyCoordCalibration_Waiting.lst`
+             Num_waiting_skyC=`cat xmkSkyCoordCalibration_Waiting.lst | awk '{print($1)}'`
+             echo "The number for the waiting skyC is: "$Num_waiting_skyC
              if [ $Num_waiting_skyC -gt 40 ]  #waiting for 10 minites
              then
                  rm -rf xmkSkyCoordCalibration.flag xmkSkyCoordCalibration_Waiting.lst
                  rm -rf xmkSkyCoordCalibration.flag xmkSkyCoordCalibration_Waiting.lst >>$stringtimeForMonitor
                  xcheckAndMakeTemp_ready
              else 
+                 echo "Waiting for the Sync making"
                  echo $fitfile "The Num is $Num_waiting_skyC , waiting for Sky coordinate calibration " >>$stringtimeForMonitor
                  continue
              fi

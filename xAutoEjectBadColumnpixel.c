@@ -21,7 +21,7 @@ main()
 	char    *first, *second;
 
 	first="newoutput";
-	second="badpixelFile.db";
+    second="Known_Columnbadpixel.cat";
 
 //	printf("first = %s\n",first);
 //	printf("second = %s\n",second);
