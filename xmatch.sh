@@ -61,7 +61,7 @@ dir_basicimage=/data2/workspace/basicfile
 DIR_CVfile=/data2/workspace/cvfile
 DIR_badpixlefile=/data2/workspace/badpixelfile
 pixelscale=29.8 #arcsec
-DETECT_TH=6
+DETECT_TH=5
 maglimitSigma=6
 
 Nstar_ini_limit=2000  #The lower limit of star num. in the image
@@ -1126,10 +1126,13 @@ xcombineOTInformation ( )
         paste $crossoutput_sky $newimageOTxyFis $crossoutput_xy listtime | awk '{print($1,$2,$11,$12,$21,$22,$31,$32,$3,$4,$5,$6,$7,$8,$9,$10)}' | column -t >crossoutput_skytemp
          mv crossoutput_skytemp $crossoutput_sky
     fi
+
     echo `date` "making the sky mag list for variable object"
     head -1 $crossoutput_sky_mag
     rm -rf listtime
-    Num_Variable=`cat $crossoutput_sky_mag | awk '{print($1)}'`
+    #dateobs=`gethead $FITFILE "D-OBS-UT"`
+    #timeobs=`gethead $FITFILE "T-OBS-UT"`
+    Num_Variable=`cat $crossoutput_sky_mag | wc -l | awk '{print($1)}'`
     echo "Num_Variable:  " $Num_Variable
     if [ $Num_Variable -gt 0 ]
     then
@@ -1137,9 +1140,11 @@ xcombineOTInformation ( )
         do
             echo $dateobs"T"$timeobs $FITFILE >>listtime
         done
-        paste $crossoutput_sky_mag $newimageOTxyFis_mag $crossoutput_mag listtime | awk '{print($1,$2,$11,$12,$21,$22,$31,$32,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)}' | column -t >crossoutput_skytemp
+        echo "variable information"
+        paste $crossoutput_sky_mag $newimageOTxyFis_mag $crossoutput_mag listtime | awk '{print($1,$2,$13,$14,$25,$26,$37,$38,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)}' | column -t >crossoutput_skytemp
          mv crossoutput_skytemp $crossoutput_sky_mag
-         rm listime
+         echo "final Variable obj in the file of  " $crossoutput_sky_mag
+         rm listtime
     fi
 
 
@@ -1270,6 +1275,46 @@ xfilterPSF ( )
        fi
     fi
 }
+
+xcheckpsf_Variable (  )
+{
+    
+    echo "xcheckpsf_Variable" >>$stringtimeForMonitor
+    #========================================
+    #check the variable candidates for fwhm, No filter is done.
+    echo "psf checking for Variables"
+    NumOT=`wc -l $crossoutput_mag | awk '{print($1)}'`
+    if [  $NumOT -gt 0  ] 
+    then
+       cat $crossoutput_sky_mag | awk '{print($3,$4, "  1 a")}' >psf.dat
+       cd $HOME/iraf
+       cp -f login.cl.old login.cl
+       echo noao >> login.cl
+       echo image >> login.cl
+       echo digiphot >> login.cl
+       echo daophot >>login.cl
+       echo "cd $DIR_data" >> login.cl
+       echo "daoedit(\"$FITFILE\", icommand=\"psf.dat\")"  >> login.cl
+       echo logout >> login.cl
+       cl < login.cl  >OUTPUT_PSF
+       mv OUTPUT_PSF $DIR_data
+       cp -f login.cl.old login.cl
+       cd $DIR_data
+       cat OUTPUT_PSF | grep "ERROR" >errormsg
+       if test ! -s errormsg
+       then 
+           cat OUTPUT_PSF | sed -e '/^$/d' | grep '[1-9]' | grep -v "NOAO" | grep -v "This" | grep -v "line" | grep -v "m" >OUTPUT_PSF1
+           paste OUTPUT_PSF1 $crossoutput_sky_mag | awk '{print($8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$5,$20,$21,$22,$23,$24,$25)}'>temp
+           mv temp $crossoutput_sky_mag
+           rm -rf errormsg
+       else
+           echo "Error in the psf when checking for variables"
+           echo "Error in the psf when checking for variables" >>$stringtimeForMonitor
+       fi
+   fi
+
+}
+
 
 xfilterCV ( )
 {
@@ -1404,7 +1449,7 @@ xOnlyUploadOT ( )
 
 xOnlyUploadMagOT ( )
 {
-     prefixlog=`echo $crossoutput_sky_mag | sed 's/.fit.skyOT//g'`
+     prefixlog=`echo $crossoutput_sky_mag | sed 's/.fit.skymagOT//g'`
      configfile=`echo $prefixlog".properties"`
      xxdateobs=`echo $dateobs | sed 's/-//g'| cut -c3-8`
      ccdtype=`echo $crossoutput_sky_mag | cut -c4-5 | awk '{print("M"$1)}'`
@@ -1417,10 +1462,11 @@ xOnlyUploadMagOT ( )
      origimage=
      cutimages= " >$configfile
 
-     echo "curl  http://190.168.1.25/uploadAction.action -F dpmName=$ccdtype  -F currentDirectory=$xxdateobs -F configFile=@$configfile -F fileUpload=@$crossoutput_sky_mag" >xupload1ot.sh
+     echo "curl  http://190.168.1.25/uploadAction.action -F dpmName=$ccdtype  -F currentDirectory=$xxdateobs -F configFile=@$configfile -F fileUpload=@$crossoutput_sky_mag" >xupload1variable.sh
+     echo "upload the variables file to the server" 
+     echo "upload the variables file to the server" >>$stringtimeForMonitor
 
-     echo "upload the OT file to the server" >>$stringtimeForMonitor
-     sh xupload1ot.sh
+     sh xupload1variable.sh
      wait
 }
 
@@ -1809,6 +1855,8 @@ do
     #xfilterBrightStars
    echo "xfilterPSF " `date` >>$stringtimeForMonitor 
     xfilterPSF
+   echo "xcheckpsf_Variable " `date` >>$stringtimeForMonitor 
+    xcheckpsf_Variable
     #====================
     #might not be used 
     #modified by xlp at 20140901
