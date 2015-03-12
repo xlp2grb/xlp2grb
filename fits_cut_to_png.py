@@ -73,7 +73,7 @@ def FitsCutToPng(inputfile, outputfile, x, y, a, s):
     
     tmpImage = f2n.fromfits(inputfile)
     tmpImage.crop(left, right, top, bottom)
-    tmpImage.setzscale("auto", "flat", 3, 100000, 300, 65000)
+    tmpImage.setzscale("auto", "flat", 3, 100000, 300)
     #tmpImage.setzscale("flat", "flat", 2, 100000, 300, 65000)
     tmpImage.makepilimage("lin", negative = False)
     if s!="":

@@ -112,29 +112,23 @@ xdefinefilename ( )
     imagetrans3sd=`echo $FITFILE | sed 's/\.fit/.fit.trans3sd/'`
     imagetrans3sd_re=`echo $FITFILE | sed 's/\.fit/.fit.trans3sd_re/'`
     inprefix=`echo $FITFILE | sed 's/\.fit//'`			# inprefix of the fit. it was used in the iraf.geomap and iraf.geoxytran
+    
     crossoutput_xy=`echo $FITFILE | sed 's/\.fit/.fit.tempxyOT/'`	# Output of the Crossmatch in the temp frame. This code is writed by CHB. It is also the input for cctran.
-    crossoutput_mag=`echo $FITFILE | sed 's/\.fit/.fit.tempMagOT/'`
-
     crossoutput_sky=`echo $FITFILE | sed 's/\.fit/.fit.skyOT/'`	# Output of the iraf.cctran. The input for this process is $crossoutput_xy. Catalog in which RA DEC are included, 
     newimageOTxyFis=`echo $FITFILE | sed 's/\.fit/.fit.newxyOT1/'`  # Output of the iraf.geoxytran. The input for this process is $crossoutput_xy. Catalog in which xc,yc are includec in the new image frame.
+    newimageOTxyThird=`echo $FITFILE | sed 's/\.fit/.fit.newxyOT3/'`
+
+    crossoutput_mag=`echo $FITFILE | sed 's/\.fit/.fit.tempMagOT/'`
+    crossoutput_sky_mag=`echo $FITFILE | sed 's/\.fit/.fit.skymagOT/'`	# Output of the iraf.cctran. The input for this process is $crossoutput_xy. Catalog in which RA DEC are included, 
+    newimageOTxyFis_mag=`echo $FITFILE | sed 's/\.fit/.fit.newxy_magOT1/'`  # Output of the iraf.geoxytran. The input for this process is $crossoutput_xy. Catalog in which xc,yc are includec in the new image frame.
+    newimageOTxyThird_mag=`echo $FITFILE | sed 's/\.fit/.fit.newxy_magOT3/'`
+
     tempstandmagstarFis=`echo $FITFILE | sed 's/\.fit/.fit.standmag1/'`
     OUTPUT_fwhm=`echo $FITFILE | sed 's/\.fit/.fit.fwhm/'`			# Output of the FWHM caculation code xFwhmCal_single.sh. 
     OUTPUT_limitmag=`echo $FITFILE | sed 's/\.fit/.fit.limitmag/'`
     bg=`echo $FITFILE | sed 's/\.fit/.bg.fit/'`				# Output of the SourceExtractor. Background image for the new image. 
-   # sample_firstTriangle=`echo $FITFILE | sed 's/\.fit/.fit.TriSam1sd.cat/'`
-   # sample_secTriangle=`echo $FITFILE | sed 's/\.fit/.fit.TriSam2sd.cat/'`
-   # sample_firstTolere=`echo $FITFILE | sed 's/\.fit/.fit.TolSam1sd.cat/'`
-   # refnew_xyflux=`echo $FITFILE | sed 's/\.fit/.fit.refnew_xyflux.cat/'`
-   # CoordDiff_table=`echo $FITFILE | sed 's/\.fit/.fit.coordiff.cat/'`
     OUTPUT_geoxytran1=`echo $FITFILE | sed 's/\.fit/.fit.tran1/'`
-   # OUTPUT_geoxytran2=`echo $FITFILE | sed 's/\.fit/.fit.tran2/'`	# Catalog in the temp frame relatively to the $OUTPUT. Output for the geoxytran 
     OUTPUT_geoxytran3=`echo $FITFILE | sed 's/\.fit/.fit.tran3/'`
-   # newimageStandxyFis=`echo $FITFILE | sed 's/\.fit/.fit.newStandxy1/'`
-   # newimageStandxySecond=`echo $FITFILE | sed 's/\.fit/.fit.newStandxy2/'`
-   # newimageOTxySecond=`echo $FITFILE | sed 's/\.fit/.fit.newxyOT2/'`
-    newimageOTxyThird=`echo $FITFILE | sed 's/\.fit/.fit.newxyOT3/'`
-   # crossoutput_sky_nopsffilter=`echo $FITFILE | sed 's/\.fit/.fit.skyOT_nopsffilter/'`
-   # crossoutput_sky_nocvfilter=`echo $FITFILE | sed 's/\.fit/.fit.skyOT_nocvfilter/'`
     newimgMaglimit=`echo $FITFILE | sed 's/\.fit/.fit.maglimitbin.png/'`
     xyxymatchResult=`echo $FITFILE | sed 's/\.fit/.fit.xyxymatchDeltaY.png/'`
     flux_calibration_png=`echo $FITFILE | sed 's/\.fit/.fit.fluxcali.png/'`
@@ -928,11 +922,11 @@ xcrossmatchwithR1Merr1 ( )
     #======================================================
     echo `date` "crossmatch"  # cross match between new image and temp in XY spece.
     echo $crossRedius $diffmag
-    ./xnewCrossMatch $crossRedius $diffmag $OUTPUT_geoxytran3 $Alltemplatetable $crossoutput_xy
+    ./xnewCrossMatchF $crossRedius $diffmag $OUTPUT_geoxytran3 $Alltemplatetable $crossoutput_xy
 
     #select out those at the edge of the image.
     #        cp $crossoutput_xy newoutput_chb.dat
-    cat $crossoutput_xy | awk '{if($1>ejmin && $1<ejmax && $2>ejmin && $2<ejmax && $13==2) print($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)}' ejmin=$ejmin ejmax=$ejmax | grep -v "99.000" >$crossoutput_mag   # new variables
+    cat $crossoutput_xy | awk '{if($1>ejmin && $1<ejmax && $2>ejmin && $2<ejmax && $13==2) print($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)}' ejmin=$ejmin ejmax=$ejmax | grep -v "99.000" >$crossoutput_mag   # new variables
     cat $crossoutput_xy | awk '{if($1>ejmin && $1<ejmax && $2>ejmin && $2<ejmax && $13==1) print($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)}' ejmin=$ejmin ejmax=$ejmax | grep -v "99.000" >temp
     mv temp $crossoutput_xy  #new ot candidates 
     #        NumOT=`wc $crossoutput_xy | awk '{print($1)}'`
@@ -1002,6 +996,7 @@ xupdatetemp ( )
     #wc $crossoutput_xy
     paste listtime $crossoutput_xy |  awk '{if($7>0 && $8>0 && $7<3056 && $8<3056)print($1,$2,$3,$4,$7,$8,$5,$6,$9,$10,$11,$12,$13,$14,$15,$16)}' | column -t >crossoutput_skytemp
     mv crossoutput_skytemp $crossoutput_sky
+
     ls $crossoutput_sky >>listupdate
     nupdate=`wc listupdate | awk '{print($1)}'`
     echo "nupdate="$nupdate
@@ -1056,9 +1051,15 @@ xcctranOT2image ( )
         echo image >> login.cl
         echo imcoords >>login.cl
         echo "cd $DIR_data" >> login.cl
+        #OT candidates
         echo "cctran(input=\"$crossoutput_xy\",output=\"$crossoutput_sky\", database=\"$Accfile\",solutions=\"first\", geometry=\"geometric\",lngunits=\"degrees\",latunits=\"degrees\",projection=\"tan\",xcolumn=1,ycolumn=2,min_sigdigits=7,forward+,lngform=\"%12.7f\",latform=\"%12.7f\" ) " >>login.cl
         echo "geoxytran(\"$crossoutput_xy\", \"$newimageOTxyThird\",\"$imagetrans3sd\", transfo=\"$inprefix\",geometr=\"geometric\",directi=\"forward\",xcolumn=1,ycolumn=2,calctyp=\"double\",min_sig=7)" >>login.cl
         echo "geoxytran(\"$newimageOTxyThird\", \"$newimageOTxyFis\",\"$imagetrans1sd\", transfo=\"$inprefix\",geometr=\"geometric\",directi=\"forward\",xcolumn=1,ycolumn=2,calctyp=\"double\",min_sig=7)" >>login.cl
+#variable stars        
+        echo "cctran(input=\"$crossoutput_mag\",output=\"$crossoutput_sky_mag\", database=\"$Accfile\",solutions=\"first\", geometry=\"geometric\",lngunits=\"degrees\",latunits=\"degrees\",projection=\"tan\",xcolumn=1,ycolumn=2,min_sigdigits=7,forward+,lngform=\"%12.7f\",latform=\"%12.7f\" ) " >>login.cl
+        echo "geoxytran(\"$crossoutput_mag\", \"$newimageOTxyThird_mag\",\"$imagetrans3sd\", transfo=\"$inprefix\",geometr=\"geometric\",directi=\"forward\",xcolumn=1,ycolumn=2,calctyp=\"double\",min_sig=7)" >>login.cl
+        echo "geoxytran(\"$newimageOTxyThird_mag\", \"$newimageOTxyFis_mag\",\"$imagetrans1sd\", transfo=\"$inprefix\",geometr=\"geometric\",directi=\"forward\",xcolumn=1,ycolumn=2,calctyp=\"double\",min_sig=7)" >>login.cl
+#standard stars 
         echo "geoxytran(\"$tempmatchstars_mag\", \"magtemp\",\"$imagetrans3sd\", transfo=\"$inprefix\",geometr=\"geometric\",directi=\"forward\",xcolumn=1,ycolumn=2,calctyp=\"double\",min_sig=7)" >>login.cl
         echo "geoxytran(\"magtemp\", \"$tempstandmagstarFis\",\"$imagetrans1sd\", transfo=\"$inprefix\",geometr=\"geometric\",directi=\"forward\",xcolumn=1,ycolumn=2,calctyp=\"double\",min_sig=7)" >>login.cl
         # echo "imarith(\"$FITFILE\",\"-\",\"$bg\",\"$FITFILE_subbg\")" >>login.cl
@@ -1076,8 +1077,13 @@ xcctranOT2image ( )
         echo image >> login.cl
         echo imcoords >>login.cl
         echo "cd $DIR_data" >> login.cl
+        #OT candidates
         echo "cctran(input=\"$crossoutput_xy\",output=\"$crossoutput_sky\", database=\"$Accfile\",solutions=\"first\", geometry=\"geometric\",lngunits=\"degrees\",latunits=\"degrees\",projection=\"tan\",xcolumn=1,ycolumn=2,min_sigdigits=7,forward+,lngform=\"%12.7f\",latform=\"%12.7f\" ) " >>login.cl
         echo "geoxytran(\"$crossoutput_xy\", \"$newimageOTxyFis\",\"$imagetrans3sd\", transfo=\"$inprefix\",geometr=\"geometric\",directi=\"forward\",xcolumn=1,ycolumn=2,calctyp=\"double\",min_sig=7)" >>login.cl
+#variable stars
+        echo "cctran(input=\"$crossoutput_mag\",output=\"$crossoutput_sky_mag\", database=\"$Accfile\",solutions=\"first\", geometry=\"geometric\",lngunits=\"degrees\",latunits=\"degrees\",projection=\"tan\",xcolumn=1,ycolumn=2,min_sigdigits=7,forward+,lngform=\"%12.7f\",latform=\"%12.7f\" ) " >>login.cl
+        echo "geoxytran(\"$crossoutput_mag\", \"$newimageOTxyFis_mag\",\"$imagetrans3sd\", transfo=\"$inprefix\",geometr=\"geometric\",directi=\"forward\",xcolumn=1,ycolumn=2,calctyp=\"double\",min_sig=7)" >>login.cl
+#standard stars
         echo "geoxytran(\"$tempmatchstars_mag\", \"$tempstandmagstarFis\",\"$imagetrans3sd\", transfo=\"$inprefix\",geometr=\"geometric\",directi=\"forward\",xcolumn=1,ycolumn=2,calctyp=\"double\",min_sig=7)" >>login.cl
         # echo "imarith(\"$FITFILE\",\"-\",\"$bg\",\"$FITFILE_subbg\")" >>login.cl
 
@@ -1091,10 +1097,11 @@ xcctranOT2image ( )
 
     #================================
     #this part should be deleted
-    cat $newimageOTxyFis | awk '{print($1+xshift0,$2+yshift0,$3,$4,$5,$6,$7,$8,$9,$10)}' xshift0=$xshift0 yshift0=$yshift0 >temp
-    mv temp $newimageOTxyFis
-    cat $tempstandmagstarFis | awk '{print($1+xshift0,$2+yshift0,$3)}' xshift0=$xshift0 yshift0=$yshift0 >temp
-    mv temp $tempstandmagstarFis
+    #deleted by xlp at 20150312
+#    cat $newimageOTxyFis | awk '{print($1+xshift0,$2+yshift0,$3,$4,$5,$6,$7,$8,$9,$10)}' xshift0=$xshift0 yshift0=$yshift0 >temp
+#    mv temp $newimageOTxyFis
+#    cat $tempstandmagstarFis | awk '{print($1+xshift0,$2+yshift0,$3)}' xshift0=$xshift0 yshift0=$yshift0 >temp
+#    mv temp $tempstandmagstarFis
 
 }
 xcombineOTInformation ( )
@@ -1106,7 +1113,6 @@ xcombineOTInformation ( )
     echo `date` "making the skyOT list"
     rm -rf listtime	
     head -1 $crossoutput_sky
-    rm -rf listtime
     #       timeobs=`gethead $FITFILE "date-obs"`
     dateobs=`gethead $FITFILE "D-OBS-UT"`
     timeobs=`gethead $FITFILE "T-OBS-UT"`
@@ -1117,23 +1123,27 @@ xcombineOTInformation ( )
         do
             echo $dateobs"T"$timeobs $FITFILE >>listtime
         done
-
-        #	cat listtime
-        #	echo "============"
-        #	head -1 $crossoutput_sky
-        #	head -1 $newimageOTxyFis
-        #	head -1 $crossoutput_xy
-        #	echo "==========="
-        #	paste $crossoutput_sky $newimageOTxyFis $crossoutput_xy listtime >listpaste
-        #	cat listpaste
         paste $crossoutput_sky $newimageOTxyFis $crossoutput_xy listtime | awk '{print($1,$2,$11,$12,$21,$22,$31,$32,$3,$4,$5,$6,$7,$8,$9,$10)}' | column -t >crossoutput_skytemp
          mv crossoutput_skytemp $crossoutput_sky
-        #	head -1 crossoutput_skytemp
-        #	echo "combineOTinformation"
-        #	head -1 $crossoutput_sky
-        #       cp $crossoutput_sky firstsky.dat
-        #	head -1 $crossoutput_sky
     fi
+    echo `date` "making the sky mag list for variable object"
+    head -1 $crossoutput_sky_mag
+    rm -rf listtime
+    Num_Variable=`cat $crossoutput_sky_mag | awk '{print($1)}'`
+    echo "Num_Variable:  " $Num_Variable
+    if [ $Num_Variable -gt 0 ]
+    then
+        for ((i=0;i<$Num_Variable;i++))
+        do
+            echo $dateobs"T"$timeobs $FITFILE >>listtime
+        done
+        paste $crossoutput_sky_mag $newimageOTxyFis_mag $crossoutput_mag listtime | awk '{print($1,$2,$11,$12,$21,$22,$31,$32,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)}' | column -t >crossoutput_skytemp
+         mv crossoutput_skytemp $crossoutput_sky_mag
+         rm listime
+    fi
+
+
+
 }
 
 xfilterDarkBadpixel ( )
@@ -1250,7 +1260,7 @@ xfilterPSF ( )
            #		cat OUTPUT_PSF1
            #		wc OUTPUT_PSF1
            #		wc $crossoutput_sky
-           paste OUTPUT_PSF1 $crossoutput_sky | awk '{if($5>PSF_Critical_min && $5<PSF_Critical_max)print($8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)}' PSF_Critical_min=$PSF_Critical_min PSF_Critical_max=$PSF_Critical_max >temp
+           paste OUTPUT_PSF1 $crossoutput_sky | awk '{if($5>PSF_Critical_min && $5<PSF_Critical_max)print($8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$5,$20,$21,$22,$23)}' PSF_Critical_min=$PSF_Critical_min PSF_Critical_max=$PSF_Critical_max >temp
            mv temp $crossoutput_sky
            #		wc  $crossoutput_sky
            rm -rf errormsg
@@ -1392,6 +1402,27 @@ xOnlyUploadOT ( )
     #fi
 }
 
+xOnlyUploadMagOT ( )
+{
+     prefixlog=`echo $crossoutput_sky_mag | sed 's/.fit.skyOT//g'`
+     configfile=`echo $prefixlog".properties"`
+     xxdateobs=`echo $dateobs | sed 's/-//g'| cut -c3-8`
+     ccdtype=`echo $crossoutput_sky_mag | cut -c4-5 | awk '{print("M"$1)}'`
+     echo "date=$xxdateobs
+     dpmname=$ccdtype
+     dfinfo=`df -Th /data | tail -1`
+     curprocnumber=`echo $crossoutput_sky_mag | cut -c23-26`
+     otlist=$crossoutput_sky_mag
+     starlist=
+     origimage=
+     cutimages= " >$configfile
+
+     echo "curl  http://190.168.1.25/uploadAction.action -F dpmName=$ccdtype  -F currentDirectory=$xxdateobs -F configFile=@$configfile -F fileUpload=@$crossoutput_sky_mag" >xupload1ot.sh
+
+     echo "upload the OT file to the server" >>$stringtimeForMonitor
+     sh xupload1ot.sh
+     wait
+}
 
 xplotandUploadOT ( ) #not used any more
 {
@@ -1785,6 +1816,9 @@ do
    # xfilterBrightbg
    echo "xOnlyUploadOT " `date` >>$stringtimeForMonitor 
     xOnlyUploadOT
+   echo "xOnlyUploadMagOT " `date` >>$stringtimeForMonitor 
+    xOnlyUploadMagOT
+
    echo "xSentFwhmAndTrack " `date` >>$stringtimeForMonitor 
     xSentFwhmAndTrack
     #	xget2sdOT
