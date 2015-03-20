@@ -86,7 +86,12 @@ xtimeCal ( )
     wait 
     timeneedresjpg=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_timeneed.jpg")}'`
     mv Timeneed.jpg $timeneedresjpg
+    echo "TimeProcess=$time_need" >>$MonitorParameterslog
+    cat $MonitorParameterslog | tr ' ' '\n'  >temp
+    mv temp $MonitorParameterslog
+    cat $MonitorParameterslog >>$stringtimeForMonitor
     curl $UploadParameterfile  -F fileUpload=@$timeneedresjpg
+    curl $UploadParameterfile  -F fileUpload=@$MonitorParameterslog
     #./xatcopy_remoteimg.f $timeneedrespng  $IPforMonitorAndTemp $Dir_IPforMonitorAndTemp  &
     echo "All were done in  $time_need sec"
     echo `date -u +%T` $timeobs $FITFILE $time_need >>$stringtimeForReduc
@@ -132,6 +137,7 @@ xdefinefilename ( )
     newimgMaglimit=`echo $FITFILE | sed 's/\.fit/.fit.maglimitbin.png/'`
     xyxymatchResult=`echo $FITFILE | sed 's/\.fit/.fit.xyxymatchDeltaY.png/'`
     flux_calibration_png=`echo $FITFILE | sed 's/\.fit/.fit.fluxcali.png/'`
+    MonitorParameterslog=`echo $FITFILE | sed 's/\.fit/.fit.monitorParaLog/'`
     echo $FITFILE 
 }
 
@@ -322,6 +328,38 @@ xMakefalseValueFormonitor_LimitmagDiffmag (  )
     sh xplotDiffExtincFromTemp.sh $ID_MountCamara
     wait
 }
+
+xProcessMonitorStatObjNumSmall (  )
+{
+    echo "This case shows that the  obj num is smaller than 3000 or bg is too bright"
+    echo "TimeObsUT=$TimeForEndObsUT Obj_Num=$Star_num bgbright=$bgbrightness Fwhm=-99 S2N=-99 AverLimit=-99 Extinc=-99 xshift=-99 yshift=-99 xrms=-99 yrms=-99 OC1=-99 VC1=-99 Image=$FITFILE  RA=$ra1 DEC=$dec1  State=ObjMonitor " >$MonitorParameterslog
+}
+
+xProcessMonitorStatReTrack (  )
+{
+    echo "This case shows that the ReTrack for the large rms after match"
+    echo "TimeObsUT=$TimeForEndObsUT Obj_Num=$Star_num bgbright=$bgbrightness Fwhm=-99 S2N=-99 AverLimit=-99 Extinc=-99 xshift=$xshift yshift=$yshift xrms=$xrms yrms=$yrms OC1=-99 VC1=-99 Image=$FITFILE  RA=$ra1 DEC=$dec1  State=Retrack " >$MonitorParameterslog
+}
+xProcessMonitorStatUpdateTemp (  )
+{
+    echo "This case shows the update for the temp"
+    fwhmnow=`cat fwhm_lastdata | awk '{print($5)}'`
+    echo "TimeObsUT=$TimeForEndObsUT Obj_Num=$Star_num bgbright=$bgbrightness Fwhm=$fwhmnow S2N=$S2N AverLimit=$averagelimit Extinc=-99 xshift=$xshift yshift=$yshift xrms=$xrms yrms=$yrms OC1=$NumOT VC1=$Num_Variable Image=$FITFILE  RA=$ra1 DEC=$dec1  State=UpdateTemp " >$MonitorParameterslog
+}    
+xProcessMonitorStatUpdateTemp2 (  )
+{
+    echo "This case shows the update for the temp since the num of OT1 is larger than 30"
+    fwhmnow=`cat fwhm_lastdata | awk '{print($5)}'`
+    echo "TimeObsUT=$TimeForEndObsUT Obj_Num=$Star_num bgbright=$bgbrightness Fwhm=$fwhmnow S2N=$S2N AverLimit=$averagelimit Extinc=-99 xshift=$xshift yshift=$yshift xrms=$xrms yrms=$yrms OC1=$NumOT VC1=$Num_Variable Image=$FITFILE  RA=$ra1 DEC=$dec1  State=LargeOT1 " >$MonitorParameterslog
+}    
+
+xProcessMonitorStatObjMonitor (  )
+{
+    echo "This case shows the Obj monitor"
+    fwhmnow=`cat fwhm_lastdata | awk '{print($5)}'`
+    echo "TimeObsUT=$TimeForEndObsUT Obj_Num=$Star_num bgbright=$bgbrightness Fwhm=$fwhmnow S2N=$S2N AverLimit=$averagelimit Extinc=-99 xshift=$xshift yshift=$yshift xrms=$xrms yrms=$yrms OC1=$NumOT VC1=$Num_Variable Image=$FITFILE  RA=$ra1 DEC=$dec1  State=ObjMonitor " >$MonitorParameterslog
+}    
+
 xgetstars (  )
 {
     sex $FITFILE  -c  xmatchdaofind.sex -DETECT_THRESH $DETECT_TH -ANALYSIS_THRESH $DETECT_TH -CATALOG_NAME $OUTPUT_ini -CHECKIMAGE_TYPE BACKGROUND -CHECKIMAGE_NAME $bg
@@ -329,6 +367,10 @@ xgetstars (  )
     wc $OUTPUT_ini | awk '{print("Star_num  " $1)}' >>$stringtimeForMonitor	
     NStar_ini=`cat $OUTPUT_ini | wc -l | awk '{printf("%.0f\n", $1)}'`
     bgbrightness=`head -1 $OUTPUT_ini | awk '{printf("%.0f\n",$5)}'`
+    TimeForEndObsUT=`gethead $FITFILE "T-END-UT"`
+    ra1=`gethead $FITFILE "RA"`
+    dec1=`gethead $FITFILE "DEC"`
+
     cd $HOME/iraf
     cp -f login.cl.old login.cl
     echo noao >> login.cl
@@ -353,6 +395,7 @@ xgetstars (  )
         #	if [ $NStar_ini -lt 3000 ] # cloudy or sunrise, moon phase
         #	then
         echo "The objects is too small,Star num: " $NStar_ini
+        xProcessMonitorStatObjNumSmall
         xtimeCal
         xMakefalseValueFormonitor_TrackRMSFWHM
 	wait
@@ -372,6 +415,7 @@ xgetstars (  )
             echo "Background is too brightness: " $bgbrightness
             echo $FITFILE "Background is too brightness: " $bgbrightness >>$stringtimeForMonitor
             ls $FITFILE >>xMissmatch.lis
+            xProcessMonitorStatObjNumSmall
             xtimeCal
             xMakefalseValueFormonitor_TrackRMSFWHM
 	    wait
@@ -395,7 +439,7 @@ xgetstars (  )
 xreTrack (  )
 {
     ls $FITFILE >>xNomatch.flag
-    ./xFwhmCal_noMatch.sh $DIR_data $FITFILE & 
+    #./xFwhmCal_noMatch.sh $DIR_data $FITFILE & 
     Nnomatchimg=`cat xNomatch.flag | wc -l | awk '{print($1)}'`
     if [  $Nnomatchimg -gt 10   ]
     then
@@ -422,6 +466,7 @@ xreTrack (  )
     cat -n allxyrms.cat >allxyrms.cat.plot
     sh xplottrackrms.sh $ID_MountCamara 
      wait
+    xProcessMonitorStatReTrack
     xtimeCal
     xMakefalseValueFormonitor_LimitmagDiffmag
     wait
@@ -1032,6 +1077,7 @@ xupdatetemp ( )
            # continue
         fi
     fi
+    xProcessMonitorStatUpdateTemp
     xtimeCal
     continue
 }
@@ -1450,7 +1496,7 @@ xOnlyUploadOT ( )
 xOnlyUploadMagOT ( )
 {
      prefixlog=`echo $crossoutput_sky_mag | sed 's/.fit.skymagOT//g'`
-     configfile=`echo $prefixlog".properties"`
+     configfile=`echo $prefixlog".vari.properties"`
      xxdateobs=`echo $dateobs | sed 's/-//g'| cut -c3-8`
      ccdtype=`echo $crossoutput_sky_mag | cut -c4-5 | awk '{print("M"$1)}'`
      echo "date=$xxdateobs
@@ -1769,6 +1815,7 @@ xcheckMatchResult (   )
         #wait
         #xMakefalseValueFormonitor_LimitmagDiffmag
         xSentFwhmAndTrack
+        xProcessMonitorStatUpdateTemp2
         xtimeCal
         continue  # The reduction of this image is not good enough, give up. 
     else  #everything is ok
@@ -1880,6 +1927,8 @@ do
     #xbakresult
    echo "xInforMonitor " `date` >>$stringtimeForMonitor 
     xInforMonitor
+    echo "xProcessMonitorStatObjMonitor" `date` >>$stringtimeForMonitor
+    xProcessMonitorStatObjMonitor
    echo "xtimeCal " `date` >>$stringtimeForMonitor 
     xtimeCal
 

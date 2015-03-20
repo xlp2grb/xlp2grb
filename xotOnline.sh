@@ -8,6 +8,7 @@
 
 #===============================================================================
 echo "xotOnline.sh newdata_dir"
+UploadParameterfile=`echo http://190.168.1.25/gwacFileReceive`
 Dir_monitor=/data2/workspace/monitor
 Dir_temp=/data2/workspace/tempfile/result
 dir_basicimage=/data2/workspace/basicfile
@@ -22,7 +23,6 @@ temp_dir=/home/gwac/newfile  #for the temp maker computer
 temp_ip=`echo 190.168.1.40` #(ip for temp builder at xinglong)
 IPforMonitorAndTemp=`echo 190.168.1.40`
 Dir_IPforMonitorAndTemp=/home/gwac/webForFwhm
-UploadParameterfile=`echo http://190.168.1.25/gwacFileReceive`
 echo $Dir_rawdata
 echo $Dir_temp
 echo $Dir_redufile
@@ -127,6 +127,7 @@ else
         comref=`cat newcomlist | head -1`
         echo $comref
         comimage=`echo $comref | sed 's/\.fit/com.fit/'`
+        MonitorParameterslog=`echo $comimage | sed 's/\.fit/.fit.monitorParaLog/'`
 	echo "combine last 5 images " `date` >>$stringtimeForMonitor
 	./xcom_withoutshift5images.sh newcomlist $comimage 
 	wait
@@ -158,7 +159,9 @@ else
                 echo "copy finished to the temp making computer"  `date` >>$stringtimeForMonitor
 			#sleep 300  #modified by xlp at 20140826
 		        rm -rf imcombine.flag $comimage newcomlist listupdate 
+                xProcessMonitorStatTempMaking
 		else 
+            xProcessMonitorStatTempMakingNoGoodImage
 			rm -rf imcombine.flag $comimage newcomlist listupdate
 			echo "The combined image is not good, fwhm is:" $fwhm_comimage
 			echo "The combined image is not good, fwhm is:" $fwhm_comimage  ` date `>>$stringtimeForMonitor
@@ -224,6 +227,7 @@ xCheckFirstMaking ( )
 	xfits2jpg &
 	./xFwhmCal_noMatch.sh $Dir_redufile $fitfile
 	wait
+    xProcessMonitorStatTempMakingWaiting
     #xsentFwhmToMonitor &
 #            continue
     else
@@ -307,12 +311,40 @@ xcheckAndMakeTemp_ready (  )
 
 }
 
-xautoSkyCoordCali (  )
+xProcessMonitorStatSkyCal ( )                                                                           
+  {
+       echo "This case shows the SkyCal stat"
+       echo "TimeObsUT=$TimeForEndObsUT Obj_Num=$Num_imgquality bgbright=-99 Fwhm=-99 S2N=-99 AverLimit=-99 Extinc=-99 xshift=-99 yshift=-99 xrms=-99 yrms=-99 OC1=-99 VC1=-99 Image=$fitfile  RA=$ra1 DEC=$dec1 State=SkyCal TimeProcess=-99" | tr ' ' '\n' >$MonitorParameterslog
+        curl $UploadParameterfile  -F fileUpload=@$MonitorParameters.log
+  }
+
+xProcessMonitorStatTempMaking ( )                                                                           
+  {
+       echo "This case shows Temp making"
+       echo "TimeObsUT=$TimeForEndObsUT Obj_Num=-99 bgbright=-99 Fwhm=$fwhm_comimage S2N=-99 AverLimit=-99 Extinc=-99 xshift=-99 yshift=-99 xrms=-99 yrms=-99 OC1=-99 VC1=-99 Image=$comimage  RA=$ra1 DEC=$dec1 State=TempMaking TimeProcess=-99" | tr ' ' '\n' >$MonitorParameterslog
+        curl $UploadParameterfile  -F fileUpload=@$MonitorParameters.log
+  }
+
+xProcessMonitorStatTempMakingWaiting ( )                                                                           
+  {
+       echo "This case shows Temp making waiting"
+       echo "TimeObsUT=$TimeForEndObsUT Obj_Num=-99 bgbright=-99 Fwhm=-99 S2N=-99 AverLimit=-99 Extinc=-99 xshift=-99 yshift=-99 xrms=-99 yrms=-99 OC1=-99 VC1=-99 Image=$fitfile  RA=$ra1 DEC=$dec1 State=TempMakeWaiting TimeProcess=-99" | tr ' ' '\n' >$MonitorParameterslog
+        curl $UploadParameterfile  -F fileUpload=@$MonitorParameters.log
+  }
+  xProcessMonitorStatTempMakingNoGoodImage (  )
+  {
+       echo "This case shows the combined image is not good for temp making"
+       echo "TimeObsUT=$TimeForEndObsUT Obj_Num=-99 bgbright=-99 Fwhm=fwhm_comimage S2N=-99 AverLimit=-99 Extinc=-99 xshift=-99 yshift=-99 xrms=-99 yrms=-99 OC1=-99 VC1=-99 Image=$comimage  RA=$ra1 DEC=$dec1 State=BadComImage TimeProcess=-99" | tr ' ' '\n' >$MonitorParameterslog
+        curl $UploadParameterfile  -F fileUpload=@$MonitorParameters.log
+  }
+
+  xautoSkyCoordCali (  )
 {
     echo "xautoSkyCoordCali"
     ./xatcopy_remoteimg.f $fitfile 190.168.1.40 ~/newfile/SkyC &
     wait
     touch xmkSkyCoordCalibration.flag
+    
     continue
 }
 
@@ -327,6 +359,7 @@ xcheckfirstimagequality (  )
     rm -rf $bg
     Num_imgquality=`wc -l image.sex | awk '{print($1)}'`
     echo "source num. in Sync image is:  $Num_imgquality"
+    xProcessMonitorStatSkyCal
     if [ $Num_imgquality -lt 5000 ]
     then   
         rm newimageCoord.list newimageCoord 
@@ -378,6 +411,7 @@ sethead -kr X RA=$ra_temp DEC=$dec_temp  $fitfile
 echo "sethead the $ra_temp and $dec_temp to img head of $fitsfile " >>$stringtimeForMonitor  
 #---------------------------------------------------
 
+TimeForEndObsUT=`gethead $fitfile "T-END-UT"`
 ID_MountCamara=`gethead  $fitfile "IMAGEID" | cut -c14-17`
 ra1=`gethead $fitfile "RA"`
 dec1=`gethead $fitfile "DEC" `
@@ -506,6 +540,7 @@ xwfits2fit  #if it is a fits
   #&&&&&&&&&&&&&&&&&&#@@@@@#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
   echo "to read the ccdtype in imhead "  `date` >>$stringtimeForMonitor
   ID_ccdtype=`gethead "CCDTYPE" $fitfile`
+  MonitorParameterslog=`echo $fitfile | sed 's/\.fit/.fit.monitorParaLog/'`
   if  [ "$ID_ccdtype"x = "OBJECT"x ] # it is an object image
   then 
     #  if test -r recopy_WrongCCDtype.flag
@@ -579,7 +614,7 @@ while :
 do
 	echo "&&&&&&&&&&&&&&&&  " `date`	>>$stringtimeForMonitor
     cd $Dir_rawdata
-	rm -rf *Initial*.fits
+    rm -rf *Initial*.fits
 	if test ! -r oldlist
 	then
         	touch oldlist
@@ -739,7 +774,10 @@ do
 			#&&&&&&&&&&&&&&&&&&#@@@@@#@@@@@@@@
 		fi
 	else
-		sleep 1
+		sleep 4
+        DataProcessWorkingflag=`echo $Dir_rawdata | cut -c1-5 | awk '{print($1".workingflag")}'`
+        touch $DataProcessWorkingflag 
+        curl $UploadParameterfile  -F fileUpload=@$DataProcessWorkingflag
 	fi
 	cd $Dir_rawdata
 done
