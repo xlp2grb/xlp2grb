@@ -23,6 +23,8 @@ temp_dir=/home/gwac/newfile  #for the temp maker computer
 temp_ip=`echo 190.168.1.40` #(ip for temp builder at xinglong)
 IPforMonitorAndTemp=`echo 190.168.1.40`
 Dir_IPforMonitorAndTemp=/home/gwac/webForFwhm
+ObjInitialImage=1000  #The critical number for object number in the initial image 
+BgBrightInitialImage=100  #The critical number for background brightness in the initial image
 echo $Dir_rawdata
 echo $Dir_temp
 echo $Dir_redufile
@@ -31,7 +33,7 @@ rm -rf matchchb.log matchchb_all.log xMissmatch.list list_matchmatss newimageCoo
 rm -rf list2frame.list list_fin listnewskyot.list listOT listsky listsky1 listskyotfile listskyotfileHis listskyot.list listtemp listtime
 rm -rf noupdate.flag listupdateimage.list listupdate_last5 listupdate crossoutput_skytemp xatcopy_remote.flag 
 #
-rm -rf *Initial*
+#rm -rf *Initial*
 #=================================================================================
 ./xmknewfile.sh
 #=================================================================================
@@ -43,7 +45,7 @@ else
         echo "oldlist exist"
 fi
 
-rm -rf *Initial*
+#rm -rf *Initial*
 #==========================================================================
 xwfits2fit (  )
 {
@@ -77,8 +79,9 @@ if test ! -r fitsbakfile
 then
 	mkdir fitsbakfile
 fi
-#rm -rf $FILE 
-mv $fitfilegz $FILE fitsbakfile
+rm -rf $FILE 
+#mv $fitfilegz $FILE fitsbakfile
+mv $fitfilegz fitsbakfile
 rm -rf $fitfile
 #echo "--------------------"
 cd $Dir_redufile
@@ -124,7 +127,7 @@ then
 	touch notemp.flag
 else
 #	echo `date` "---------to combine the 5 images-------"
-        comref=`cat newcomlist | head -1`
+        comref=`cat newcomlist | tail -5  | head -1`
         echo $comref
         comimage=`echo $comref | sed 's/\.fit/com.fit/'`
         MonitorParameterslog=`echo $comimage | sed 's/\.fit/.fit.monitorParaLog/'`
@@ -212,6 +215,7 @@ fi
 
 xCheckFirstMaking ( )
 {
+    xfits2jpg & 
 	if test -r $errorimage
     then
 	echo "have error image flag  "  `date` >>$stringtimeForMonitor
@@ -224,7 +228,6 @@ xCheckFirstMaking ( )
             echo "first have xatcopy_remote.flag"
             #sleep 180 #modified by xlp at 20140826 
 	ls $fitfile >>xMissmatch.list
-	xfits2jpg &
 	./xFwhmCal_noMatch.sh $Dir_redufile $fitfile
 	wait
     xProcessMonitorStatTempMakingWaiting
@@ -245,20 +248,19 @@ echo "---xcheckifcopy---"
 date
 if test -s xcheckResult
 then
-                ra1_xcheckresult=`cat xcheckResult | awk '{print($1)}'`
-                dec1_xcheckresult=`cat xcheckResult | awk '{print($2)}'`
-                idCama_xcheckresult=`cat xcheckResult | awk '{print($3)}'`
-		ra_sky_xcheckresult=`cat xcheckResult | awk '{print($4)}'`
-		dec_sky_xcheckresult=`cat xcheckResult | awk '{print($5)}'`
-                if [ "$ra_mount" != "$ra1_xcheckresult" ]  ||  [ "$dec_mount" != "$dec1_xcheckresult" ] || [ "$ID_MountCamara" != "$idCama_xcheckresult" ]
-                then
-                        xcheckskyfield
-                        rm -rf noupdate.flag
-                else
-		        sethead -kr X RAsky=$dec_sky_xcheckresult DECsky=$dec_sky_xcheckresult $fitfile	
-			xcopytemp
-	
-                fi
+    ra1_xcheckresult=`cat xcheckResult | awk '{print($1)}'`
+    dec1_xcheckresult=`cat xcheckResult | awk '{print($2)}'`
+    idCama_xcheckresult=`cat xcheckResult | awk '{print($3)}'`
+	ra_sky_xcheckresult=`cat xcheckResult | awk '{print($4)}'`
+	dec_sky_xcheckresult=`cat xcheckResult | awk '{print($5)}'`
+    if [ "$ra_mount" != "$ra1_xcheckresult" ]  ||  [ "$dec_mount" != "$dec1_xcheckresult" ] || [ "$ID_MountCamara" != "$idCama_xcheckresult" ]
+    then
+        xcheckskyfield
+        rm -rf noupdate.flag
+    else
+	    sethead -kr X RAsky=$dec_sky_xcheckresult DECsky=$dec_sky_xcheckresult $fitfile	
+	    xcopytemp
+    fi
 else
         xcheckskyfield
 fi
@@ -293,49 +295,53 @@ xcopytemp (  )
 #=================================================================================
 xcheckAndMakeTemp_ready (  )
 {
+    echo "=======xcheckAndMakeTemp_ready========"
+    #xfits2jpg &
     echo "xcheckAndMakeTemp_ready" >>$stringtimeForMonitor
-    	RaLast=`cat newimageCoord.list | awk '{print($1)}'`
-    	cp newimageCoord newimageCoord.list
-        echo "Ra for last image is:  " $RaLast >>$stringtimeForMonitor 
-    	if [ "$RaLast"  != "$ra_mount"  ]
-    	then
-    		echo "New sky field"
-    		echo "New sky field"  `date`  >>$stringtimeForMonitor
-    		rm -rf listsky newcomlist newxyshift.cat xatcopy_remote.flag
-    		xcheckskyfield
-    	else
-    		echo "This sky field is continuing"
-    		echo "This sky field is continuing " `date` >>$stringtimeForMonitor
-    		xcheckifcopy
-    	fi
+    RaLast=`cat newimageCoord.list | awk '{print($1)}'`
+    cp newimageCoord newimageCoord.list
+    echo "Ra for last image is:  " $RaLast >>$stringtimeForMonitor 
+    if [ "$RaLast"  != "$ra_mount"  ]
+    then
+    	echo "New sky field"
+    	echo "New sky field"  `date`  >>$stringtimeForMonitor
+    	rm -rf listsky newcomlist newxyshift.cat xatcopy_remote.flag
+    	xcheckskyfield
+    else
+    	echo "This sky field is continuing"
+    	echo "This sky field is continuing " `date` >>$stringtimeForMonitor
+    	xcheckifcopy
+    fi
 
 }
 
 xProcessMonitorStatSkyCal ( )                                                                           
   {
-       echo "This case shows the SkyCal stat"
-       echo "TimeObsUT=$TimeForEndObsUT Obj_Num=$Num_imgquality bgbright=-99 Fwhm=-99 S2N=-99 AverLimit=-99 Extinc=-99 xshift=-99 yshift=-99 xrms=-99 yrms=-99 OC1=-99 VC1=-99 Image=$fitfile  RA=$ra1 DEC=$dec1 State=SkyCal TimeProcess=-99" | tr ' ' '\n' >$MonitorParameterslog
-        curl $UploadParameterfile  -F fileUpload=@$MonitorParameters.log
+    echo "====xProcessMonitorStatSkyCal===="
+    echo "This case shows the SkyCal stat"
+    echo "TimeObsUT=$TimeForEndObsUT Obj_Num=$Num_imgquality bgbright=-99 Fwhm=-99 S2N=-99 AverLimit=-99 Extinc=-99 xshift=-99 yshift=-99 xrms=-99 yrms=-99 OC1=-99 VC1=-99 Image=$fitfile RA=$ra1 DEC=$dec1 State=SkyCal TimeProcess=-99" | tr ' ' '\n'
+    echo "TimeObsUT=$TimeForEndObsUT Obj_Num=$Num_imgquality bgbright=-99 Fwhm=-99 S2N=-99 AverLimit=-99 Extinc=-99 xshift=-99 yshift=-99 xrms=-99 yrms=-99 OC1=-99 VC1=-99 Image=$fitfile  RA=$ra1 DEC=$dec1 State=SkyCal TimeProcess=-99" | tr ' ' '\n' >$MonitorParameterslog
+    curl $UploadParameterfile  -F fileUpload=@$MonitorParameterslog
   }
 
 xProcessMonitorStatTempMaking ( )                                                                           
   {
        echo "This case shows Temp making"
-       echo "TimeObsUT=$TimeForEndObsUT Obj_Num=-99 bgbright=-99 Fwhm=$fwhm_comimage S2N=-99 AverLimit=-99 Extinc=-99 xshift=-99 yshift=-99 xrms=-99 yrms=-99 OC1=-99 VC1=-99 Image=$comimage  RA=$ra1 DEC=$dec1 State=TempMaking TimeProcess=-99" | tr ' ' '\n' >$MonitorParameterslog
-        curl $UploadParameterfile  -F fileUpload=@$MonitorParameters.log
+       echo "TimeObsUT=$TimeForEndObsUT Obj_Num=-99 bgbright=-99 Fwhm=$fwhm_comimage S2N=-99 AverLimit=-99 Extinc=-99 xshift=-99 yshift=-99 xrms=-99 yrms=-99 OC1=-99 VC1=-99 Image=$comimage RA=$ra1 DEC=$dec1 State=TempMaking TimeProcess=-99" | tr ' ' '\n' >$MonitorParameterslog
+        curl $UploadParameterfile  -F fileUpload=@$MonitorParameterslog
   }
 
 xProcessMonitorStatTempMakingWaiting ( )                                                                           
   {
        echo "This case shows Temp making waiting"
-       echo "TimeObsUT=$TimeForEndObsUT Obj_Num=-99 bgbright=-99 Fwhm=-99 S2N=-99 AverLimit=-99 Extinc=-99 xshift=-99 yshift=-99 xrms=-99 yrms=-99 OC1=-99 VC1=-99 Image=$fitfile  RA=$ra1 DEC=$dec1 State=TempMakeWaiting TimeProcess=-99" | tr ' ' '\n' >$MonitorParameterslog
-        curl $UploadParameterfile  -F fileUpload=@$MonitorParameters.log
+       echo "TimeObsUT=$TimeForEndObsUT Obj_Num=-99 bgbright=-99 Fwhm=-99 S2N=-99 AverLimit=-99 Extinc=-99 xshift=-99 yshift=-99 xrms=-99 yrms=-99 OC1=-99 VC1=-99 Image=$fitfile RA=$ra1 DEC=$dec1 State=TempMakeWaiting TimeProcess=-99" | tr ' ' '\n' >$MonitorParameterslog
+        curl $UploadParameterfile  -F fileUpload=@$MonitorParameterslog
   }
   xProcessMonitorStatTempMakingNoGoodImage (  )
   {
        echo "This case shows the combined image is not good for temp making"
-       echo "TimeObsUT=$TimeForEndObsUT Obj_Num=-99 bgbright=-99 Fwhm=fwhm_comimage S2N=-99 AverLimit=-99 Extinc=-99 xshift=-99 yshift=-99 xrms=-99 yrms=-99 OC1=-99 VC1=-99 Image=$comimage  RA=$ra1 DEC=$dec1 State=BadComImage TimeProcess=-99" | tr ' ' '\n' >$MonitorParameterslog
-        curl $UploadParameterfile  -F fileUpload=@$MonitorParameters.log
+       echo "TimeObsUT=$TimeForEndObsUT Obj_Num=-99 bgbright=-99 Fwhm=fwhm_comimage S2N=-99 AverLimit=-99 Extinc=-99 xshift=-99 yshift=-99 xrms=-99 yrms=-99 OC1=-99 VC1=-99 Image=$comimage RA=$ra1 DEC=$dec1 State=BadComImage TimeProcess=-99" | tr ' ' '\n' >$MonitorParameterslog
+        curl $UploadParameterfile  -F fileUpload=@$MonitorParameterslog
   }
 
   xautoSkyCoordCali (  )
@@ -373,7 +379,39 @@ xcheckfirstimagequality (  )
     fi      
 }
 
-
+xcheckInitialImage (  )
+{
+    echo "====xcheckInitialImage===="
+    echo "====xcheckInitialImage====" >>$stringtimeForMonitor
+    InitialImagMonitorlog=`echo $fitfile | cut -c2-3 | awk '{print("M"$1"_initialimageMonitor.log")}'`
+    cp $fitfile $Dir_redufile
+    cd $Dir_redufile
+    xfits2jpg  &
+    rm -rf image.sex
+    sex $fitfile  -c  xmatchdaofind.sex -DETECT_THRESH 6 -ANALYSIS_THRESH 6 -CATALOG_NAME image.sex -CHECKIMAGE_TYPE BACKGROUND -CHECKIMAGE_NAME       $bg
+    rm -rf $bg
+    obj_intialimgquality=`wc -l image.sex | awk '{print($1)}'`
+    echo "source num. in initial image is:  $obj_initialimgquality"
+    if [ $obj_intialimgquality -gt $ObjInitialImage ]
+    then   
+        echo "Object number of initial image is not right"
+        bgbright_initialimgquality=`cat image.sex | head -1 | awk '{print($5)}'`
+        echo "Background brightness of initial image is $bgbright_initialimgquality"
+        if [ $bgbright_initialimgquality -gt $BgBrightInitialImage  ]
+        then
+            echo "Background brightness of initial image is normal"
+        else
+            echo "Background brightness of initial image is not right"
+        fi
+    else
+        echo "Object number in the initial image is not right"
+    fi
+    echo $obj_intialimgquality $bgbright_initialimgquality $ObjInitialImage $BgBrightInitialImage >$InitialImagMonitorlog
+    curl $UploadParameterfile  -F fileUpload=@$InitialImagMonitorlog
+    cd $Dir_rawdata
+    mv *Initial* fitsbakfile
+    cd $Dir_redufile
+}
 
 xcheckAndMakeTemp (  )
 {
@@ -459,6 +497,7 @@ fi
 }
 xfits2jpg ( )
 {
+    echo "=======xfits2jpg======"
 ID_MountCamara=`gethead $fitfile "IMAGEID"  | cut -c14-17`
 ccdimgjpg=`echo $fitfile | cut -c4-5 | awk '{print("M"$1"_ccdimg.jpg")}'`
 #skyfield_num=`echo $fitfile | cut -c16-26 | awk '{print("M"$1)}'`
@@ -497,9 +536,9 @@ xcheckDarkimgQuality (   )
     echo "source num. in dark image is: " $Num_imgquality
     if [ $Num_imgquality -gt 1000   ]
     then            
-    ┊   echo $fitfile "is not good for the dark making ! "
-    ┊   echo $fitfile "is not good !" >>errordarkimg.flag
-    ┊   continue    
+       echo $fitfile "is not good for the dark making ! "
+       echo $fitfile "is not good !" >>errordarkimg.flag
+       continue    
     else
         echo "This dark image is good"
     fi              
@@ -560,13 +599,16 @@ xwfits2fit  #if it is a fits
           if [ $line_darklist -gt 10 ]
           then
 		  echo "dark combination  " `date`   >>$stringtimeForMonitor
-                  ./xdarkcom.sh
-                  wait
-                  rm -rf *_5_* listdark
-                  stringtime=`date -u +%Y%m%d%H%M%S`
-                  basicstring=`echo "Dark_"$stringtime".fit"`
-                  cp -f Dark.fit  $basicstring
-                  cp -f Dark.fit $basicstring badpixelFile.db $dir_basicimage
+                ./xdarkcom.sh
+                wait
+                rm -rf *_5_* listdark
+                if test -r Dark.fit
+                then
+                    stringtime=`date -u +%Y%m%d%H%M%S`
+                    basicstring=`echo "Dark_"$stringtime".fit"`
+                    cp -f Dark.fit  $basicstring
+                    cp -f Dark.fit $basicstring badpixelFile.db $dir_basicimage
+                fi
 
           else
                   echo "dark image is not enough"
@@ -614,7 +656,7 @@ while :
 do
 	echo "&&&&&&&&&&&&&&&&  " `date`	>>$stringtimeForMonitor
     cd $Dir_rawdata
-    rm -rf *Initial*.fits
+    #rm -rf *Initial*.fits
 	if test ! -r oldlist
 	then
         	touch oldlist
@@ -643,10 +685,17 @@ do
 		#diff oldlist newlist | grep  ">" | tr -d '>' | column -t >listmatch1
 		#==========================
 		#just for the sort the image of dark, flat, object frames
+        Ninitimage=`cat listmatch1 | grep "Initial" | wc -l`
+        if [ $Ninitimage -gt 0  ]
+        then
+            cat listmatch1 | grep "Initial" | tail -1 > list
+            fitfile=`cat list`
+            xcheckInitialImage
+        fi
 		Ndark=`cat listmatch1 | grep "_5_" | wc -l` #dark frames
-                if [ $Ndark -gt 0  ]
-                then
-                        cat listmatch1 | grep "_5_" | head -1 >list
+        if [ $Ndark -gt 0  ]
+        then
+            cat listmatch1 | grep "_5_" | head -1 >list
 			cp -f list listmatch
 			cat list >>oldlist
 			sort oldlist >oldlist1

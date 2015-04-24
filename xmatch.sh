@@ -396,6 +396,7 @@ xgetstars (  )
         #	then
         echo "The objects is too small,Star num: " $NStar_ini
         xProcessMonitorStatObjNumSmall
+        xInforMonitor
         xtimeCal
         xMakefalseValueFormonitor_TrackRMSFWHM
 	wait
@@ -416,6 +417,7 @@ xgetstars (  )
             echo $FITFILE "Background is too brightness: " $bgbrightness >>$stringtimeForMonitor
             ls $FITFILE >>xMissmatch.lis
             xProcessMonitorStatObjNumSmall
+            xInforMonitor
             xtimeCal
             xMakefalseValueFormonitor_TrackRMSFWHM
 	    wait
@@ -467,6 +469,7 @@ xreTrack (  )
     sh xplottrackrms.sh $ID_MountCamara 
      wait
     xProcessMonitorStatReTrack
+    xInforMonitor
     xtimeCal
     xMakefalseValueFormonitor_LimitmagDiffmag
     wait
@@ -1078,6 +1081,7 @@ xupdatetemp ( )
         fi
     fi
     xProcessMonitorStatUpdateTemp
+    xInforMonitor
     xtimeCal
     continue
 }
@@ -1144,10 +1148,10 @@ xcctranOT2image ( )
     #================================
     #this part should be deleted
     #deleted by xlp at 20150312
-#    cat $newimageOTxyFis | awk '{print($1+xshift0,$2+yshift0,$3,$4,$5,$6,$7,$8,$9,$10)}' xshift0=$xshift0 yshift0=$yshift0 >temp
-#    mv temp $newimageOTxyFis
-#    cat $tempstandmagstarFis | awk '{print($1+xshift0,$2+yshift0,$3)}' xshift0=$xshift0 yshift0=$yshift0 >temp
-#    mv temp $tempstandmagstarFis
+    cat $newimageOTxyFis | awk '{print($1+xshift0,$2+yshift0,$3,$4,$5,$6,$7,$8,$9,$10)}' xshift0=$xshift0 yshift0=$yshift0 >temp
+    mv temp $newimageOTxyFis
+    cat $tempstandmagstarFis | awk '{print($1+xshift0,$2+yshift0,$3)}' xshift0=$xshift0 yshift0=$yshift0 >temp
+    mv temp $tempstandmagstarFis
 
 }
 xcombineOTInformation ( )
@@ -1454,7 +1458,7 @@ xget2sdOT ( )
 
 }
 
-xOnlyUploadOT ( )
+xOnlyUploadOTAndmag ( )
 {
     #if test -s fwhm_lastdata
     #then
@@ -1470,6 +1474,7 @@ xOnlyUploadOT ( )
              dfinfo=`df -Th /data | tail -1`
              curprocnumber=`echo $crossoutput_sky | cut -c23-26`
              otlist=$crossoutput_sky
+             varilist=$crossoutput_sky_mag
              starlist=
              origimage=
              cutimages= " >$configfile
@@ -1479,7 +1484,7 @@ xOnlyUploadOT ( )
              #echo $dateobs $xxdateobs
              #echo "curl  http://190.168.1.25/uploadAction.action -F dpmName=$ccdtype  -F currentDirectory=$xxdateobs -F configFile=@$configfile -F fileUpload=@$crossoutput_sky"
 
-             echo "curl  http://190.168.1.25/uploadAction.action -F dpmName=$ccdtype  -F currentDirectory=$xxdateobs -F configFile=@$configfile -F fileUpload=@$crossoutput_sky" >xupload1ot.sh
+             echo "curl  http://190.168.1.25/uploadAction.action -F dpmName=$ccdtype  -F currentDirectory=$xxdateobs -F configFile=@$configfile -F fileUpload=@$crossoutput_sky -F fileUpload=@$crossoutput_sky_mag" >xupload1ot.sh
 
              echo "upload the OT file to the server" >>$stringtimeForMonitor
              sh xupload1ot.sh
@@ -1496,14 +1501,14 @@ xOnlyUploadOT ( )
 xOnlyUploadMagOT ( )
 {
      prefixlog=`echo $crossoutput_sky_mag | sed 's/.fit.skymagOT//g'`
-     configfile=`echo $prefixlog".vari.properties"`
+     configfile=`echo $prefixlog"_vari.properties"`
      xxdateobs=`echo $dateobs | sed 's/-//g'| cut -c3-8`
      ccdtype=`echo $crossoutput_sky_mag | cut -c4-5 | awk '{print("M"$1)}'`
      echo "date=$xxdateobs
      dpmname=$ccdtype
      dfinfo=`df -Th /data | tail -1`
      curprocnumber=`echo $crossoutput_sky_mag | cut -c23-26`
-     otlist=$crossoutput_sky_mag
+     varilist=$crossoutput_sky_mag
      starlist=
      origimage=
      cutimages= " >$configfile
@@ -1816,6 +1821,7 @@ xcheckMatchResult (   )
         #xMakefalseValueFormonitor_LimitmagDiffmag
         xSentFwhmAndTrack
         xProcessMonitorStatUpdateTemp2
+        xInforMonitor
         xtimeCal
         continue  # The reduction of this image is not good enough, give up. 
     else  #everything is ok
@@ -1909,10 +1915,10 @@ do
     #modified by xlp at 20140901
    # xfilterCV
    # xfilterBrightbg
-   echo "xOnlyUploadOT " `date` >>$stringtimeForMonitor 
-    xOnlyUploadOT
-   echo "xOnlyUploadMagOT " `date` >>$stringtimeForMonitor 
-    xOnlyUploadMagOT
+   echo "xOnlyUploadOTAndmag " `date` >>$stringtimeForMonitor 
+    xOnlyUploadOTAndmag
+   #echo "xOnlyUploadMagOT " `date` >>$stringtimeForMonitor 
+    #xOnlyUploadMagOT
 
    echo "xSentFwhmAndTrack " `date` >>$stringtimeForMonitor 
     xSentFwhmAndTrack
