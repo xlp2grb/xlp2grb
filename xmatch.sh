@@ -61,7 +61,7 @@ dir_basicimage=/data2/workspace/basicfile
 DIR_CVfile=/data2/workspace/cvfile
 DIR_badpixlefile=/data2/workspace/badpixelfile
 pixelscale=29.8 #arcsec
-DETECT_TH=5
+DETECT_TH=3.0
 maglimitSigma=6
 
 Nstar_ini_limit=2000  #The lower limit of star num. in the image
@@ -77,7 +77,7 @@ fwhm_uplimit=2.0
 
 xtimeCal ( )
 {
-    timeobs=`gethead $FITFILE "T-OBS-UT"`
+    #timeobs=`gethead $FITFILE "T-OBS-UT"`
     date "+%H %M %S" >time_redu1
     time_need=`cat time_redu_f time_redu1 | tr '\n' ' ' | awk '{print(($4-$1)*3600+($5-$2)*60+($6-$3))}'`
     echo $time_need $FITFILE >>allxytimeNeed.cat
@@ -91,7 +91,9 @@ xtimeCal ( )
     mv temp $MonitorParameterslog
     cat $MonitorParameterslog >>$stringtimeForMonitor
     curl $UploadParameterfile  -F fileUpload=@$timeneedresjpg
-    curl $UploadParameterfile  -F fileUpload=@$MonitorParameterslog
+    xUploadImgStatus
+    wait
+    #curl $UploadParameterfile  -F fileUpload=@$MonitorParameterslog
     #./xatcopy_remoteimg.f $timeneedrespng  $IPforMonitorAndTemp $Dir_IPforMonitorAndTemp  &
     echo "All were done in  $time_need sec"
     echo `date -u +%T` $timeobs $FITFILE $time_need >>$stringtimeForReduc
@@ -215,34 +217,42 @@ xfits2jpg ( )
     rm -rf $ccdimgjpg
 }
 
-xSentObjAndBg (  )
+xSentObjAndBgAndEllip (  )
 {
     echo "Star num. is : " $NStar_ini
     rm -rf newbgbrightres.cat
     cat $OUTPUT_ini | awk '{if($1>ejmin && $1<ejmax && $2>ejmin && $2<ejmax)print($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)}' ejmin=$ejmin ejmax=$ejmax >newbgbright.cat
-    ./xavbgbright 
-    wait
+   # ./xavbgbright 
+   #wait
+   ./xavbgbrightAndEllip  #output is the averagebg and average_ellip
+   wait
     if test ! -r newbgbrightres.cat
     then
         echo "no result of bg brightness"
         continue
     else
-        bgbrightness=`cat newbgbrightres.cat | awk '{printf("%.0f\n", $1)}'`
-        echo "bg brightness is : " $bgbrightness
-        echo $NStar_ini $bgbrightness $FITFILE >>allxyObjNumAndBgBright.cat
+        cat newbgbrightres.cat
+        bgbrightness=`cat newbgbrightres.cat | awk '{printf("%.1f\n", $1)}'`
+        avellip=`cat newbgbrightres.cat | awk '{printf("%.2f\n",$2)}'`
+        echo "averaage bg brightness and ellipticity :  $bgbrightness , $avellip"
+        echo $NStar_ini $bgbrightness $avellip $FITFILE >>allxyObjNumAndBgBrightAndavellip.cat
+
     fi    
 
     echo "=====to plot the obj and bg brightness ====="
-    cat -n allxyObjNumAndBgBright.cat >allxyObjNumAndBgBright.cat.plot
-    sh xplotobjAndBg.sh $ID_MountCamara $Nstar_ini_limit $Nbgbright_ini_uplimit 
+    cat -n allxyObjNumAndBgBrightAndavellip.cat >allxyObjNumAndBgBrightAndavellip.cat.plot
+    sh xplotobjAndBgAndEllip.sh $ID_MountCamara $Nstar_ini_limit $Nbgbright_ini_uplimit 
     wait
     objnumresjpg=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_objnum.jpg")}'`
     bgbrightresjpg=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_bgbright.jpg")}'`
+    avellipresjpg=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1"_avellip.jpg")}'`
     mv objnum.jpg $objnumresjpg
     curl $UploadParameterfile  -F fileUpload=@$objnumresjpg
     #wait
     mv bgbright.jpg $bgbrightresjpg
     curl $UploadParameterfile  -F fileUpload=@$bgbrightresjpg
+    mv avellip.jpg $avellipresjpg
+    curl $UploadParameterfile  -F fileUpload=@$avellipresjpg
     #wait
     #    ./xatcopy_remoteimg4.f $fwhmrespng  $trackrespng  $limitmagrespng $rmsrespng $IPforMonitorAndTemp $Dir_IPforMonitorAndTemp &
     #./xatcopy_remoteimg3.f $fwhmrespng  $trackrespng  $limitmagrespng $IPforMonitorAndTemp $Dir_IPforMonitorAndTemp &
@@ -332,32 +342,32 @@ xMakefalseValueFormonitor_LimitmagDiffmag (  )
 xProcessMonitorStatObjNumSmall (  )
 {
     echo "This case shows that the  obj num is smaller than 3000 or bg is too bright"
-    echo "TimeObsUT=$TimeForEndObsUT Obj_Num=$Star_num bgbright=$bgbrightness Fwhm=-99 S2N=-99 AverLimit=-99 Extinc=-99 xshift=-99 yshift=-99 xrms=-99 yrms=-99 OC1=-99 VC1=-99 Image=$FITFILE  RA=$ra1 DEC=$dec1  State=ObjMonitor " >$MonitorParameterslog
+    echo "DateObsUT=$dateobs TimeObsUT=$timeobs Obj_Num=$Star_num bgbright=$bgbrightness Fwhm=-99 S2N=-99 AverLimit=-99 Extinc=-99 xshift=-99 yshift=-99 xrms=-99 yrms=-99 OC1=-99 VC1=-99 Image=$FITFILE RA=$ra_mount DEC=$dec_mount State=ObjNumSmall TimeProcess=$time_need  ellipticity=$avellip tempset=$tempset tempact=$tempact" | tr ' ' '\n' >$MonitorParameterslog
 }
 
 xProcessMonitorStatReTrack (  )
 {
-    echo "This case shows that the ReTrack for the large rms after match"
-    echo "TimeObsUT=$TimeForEndObsUT Obj_Num=$Star_num bgbright=$bgbrightness Fwhm=-99 S2N=-99 AverLimit=-99 Extinc=-99 xshift=$xshift yshift=$yshift xrms=$xrms yrms=$yrms OC1=-99 VC1=-99 Image=$FITFILE  RA=$ra1 DEC=$dec1  State=Retrack " >$MonitorParameterslog
+    echo "This case shows that the ReTrack for the large rms after match"   
+    echo "DateObsUT=$dateobs TimeObsUT=$timeobs Obj_Num=$Star_num bgbright=$bgbrightness Fwhm=-99 S2N=-99 AverLimit=-99 Extinc=-99 xshift=$xshift yshift=$yshift xrms=$xrms yrms=$yrms OC1=-99 VC1=-99 Image=$FITFILE RA=$ra_mount DEC=$dec_mount State=Retrack TimeProcess=$time_need ellipticity=$avellip tempset=$tempset tempact=$tempact" | tr ' '  '\n' >$MonitorParameterslog
 }
 xProcessMonitorStatUpdateTemp (  )
 {
     echo "This case shows the update for the temp"
     fwhmnow=`cat fwhm_lastdata | awk '{print($5)}'`
-    echo "TimeObsUT=$TimeForEndObsUT Obj_Num=$Star_num bgbright=$bgbrightness Fwhm=$fwhmnow S2N=$S2N AverLimit=$averagelimit Extinc=-99 xshift=$xshift yshift=$yshift xrms=$xrms yrms=$yrms OC1=$NumOT VC1=$Num_Variable Image=$FITFILE  RA=$ra1 DEC=$dec1  State=UpdateTemp " >$MonitorParameterslog
+    echo "DateObsUT=$dateobs TimeObsUT=$timeobs Obj_Num=$Star_num bgbright=$bgbrightness Fwhm=$fwhmnow S2N=$S2N AverLimit=$averagelimit Extinc=-99 xshift=$xshift yshift=$yshift xrms=$xrms yrms=$yrms OC1=$NumOT VC1=$Num_Variable Image=$FITFILE RA=$ra_mount DEC=$dec_mount State=UpdateTemp TimeProcess=$time_need ellipticity=$avellip tempset=$tempset tempact=$tempact" | tr ' ' '\n'>$MonitorParameterslog
 }    
 xProcessMonitorStatUpdateTemp2 (  )
 {
     echo "This case shows the update for the temp since the num of OT1 is larger than 30"
     fwhmnow=`cat fwhm_lastdata | awk '{print($5)}'`
-    echo "TimeObsUT=$TimeForEndObsUT Obj_Num=$Star_num bgbright=$bgbrightness Fwhm=$fwhmnow S2N=$S2N AverLimit=$averagelimit Extinc=-99 xshift=$xshift yshift=$yshift xrms=$xrms yrms=$yrms OC1=$NumOT VC1=$Num_Variable Image=$FITFILE  RA=$ra1 DEC=$dec1  State=LargeOT1 " >$MonitorParameterslog
+    echo "DateObsUT=$dateobs TimeObsUT=$timeobs Obj_Num=$Star_num bgbright=$bgbrightness Fwhm=$fwhmnow S2N=$S2N AverLimit=$averagelimit Extinc=-99 xshift=$xshift yshift=$yshift xrms=$xrms yrms=$yrms OC1=$NumOT VC1=$Num_Variable Image=$FITFILE RA=$ra_mount DEC=$dec_mount State=LargeOT1 TimeProcess=$time_need ellipticity=$avellip tempset=$tempset tempact=$tempact" | tr ' '  '\n' >$MonitorParameterslog
 }    
 
 xProcessMonitorStatObjMonitor (  )
 {
     echo "This case shows the Obj monitor"
     fwhmnow=`cat fwhm_lastdata | awk '{print($5)}'`
-    echo "TimeObsUT=$TimeForEndObsUT Obj_Num=$Star_num bgbright=$bgbrightness Fwhm=$fwhmnow S2N=$S2N AverLimit=$averagelimit Extinc=-99 xshift=$xshift yshift=$yshift xrms=$xrms yrms=$yrms OC1=$NumOT VC1=$Num_Variable Image=$FITFILE  RA=$ra1 DEC=$dec1  State=ObjMonitor " >$MonitorParameterslog
+    echo "DateObsUT=$dateobs TimeObsUT=$timeobs Obj_Num=$Star_num bgbright=$bgbrightness Fwhm=$fwhmnow S2N=$S2N AverLimit=$averagelimit Extinc=-99 xshift=$xshift yshift=$yshift xrms=$xrms yrms=$yrms OC1=$NumOT VC1=$Num_Variable Image=$FITFILE RA=$ra_mount DEC=$dec_mount State=ObjMonitor TimeProcess=$time_need ellipticity=$avellip tempset=$tempset tempact=$tempact" | tr ' ' '\n'>$MonitorParameterslog
 }    
 
 xgetstars (  )
@@ -367,9 +377,8 @@ xgetstars (  )
     wc $OUTPUT_ini | awk '{print("Star_num  " $1)}' >>$stringtimeForMonitor	
     NStar_ini=`cat $OUTPUT_ini | wc -l | awk '{printf("%.0f\n", $1)}'`
     bgbrightness=`head -1 $OUTPUT_ini | awk '{printf("%.0f\n",$5)}'`
-    TimeForEndObsUT=`gethead $FITFILE "T-END-UT"`
-    ra1=`gethead $FITFILE "RA"`
-    dec1=`gethead $FITFILE "DEC"`
+    #ra1=`gethead $FITFILE "RA"`
+    #dec1=`gethead $FITFILE "DEC"`
 
     cd $HOME/iraf
     cp -f login.cl.old login.cl
@@ -386,7 +395,7 @@ xgetstars (  )
     cd $DIR_data	
     rm -rf $bg
     xfits2jpg &
-    xSentObjAndBg &
+    xSentObjAndBgAndEllip &
     #echo "Background brightness: " $bgbrightness
     if [ $NStar_ini -lt $Nstar_ini_limit ]
     then
@@ -443,7 +452,7 @@ xreTrack (  )
     ls $FITFILE >>xNomatch.flag
     #./xFwhmCal_noMatch.sh $DIR_data $FITFILE & 
     Nnomatchimg=`cat xNomatch.flag | wc -l | awk '{print($1)}'`
-    if [  $Nnomatchimg -gt 10   ]
+    if [  $Nnomatchimg -gt 20   ]
     then
         #sethead -kr X TODO=ReTrack $FITFILE
         #	mkdir xNomatch_lot6c2.py.flag
@@ -1033,8 +1042,9 @@ xupdatetemp ( )
     #                if test -r noupdate.flag
     #                then
     #                        echo "have noupdate.flag"
-    dateobs=`gethead $FITFILE "D-OBS-UT"`
-    timeobs=`gethead $FITFILE "T-OBS-UT"`
+
+#    dateobs=`gethead $FITFILE "D-OBS-UT"`
+#    timeobs=`gethead $FITFILE "T-OBS-UT"`
     rm -rf listtime
     for ((i=0;i<$NumOT;i++))
     do
@@ -1164,8 +1174,10 @@ xcombineOTInformation ( )
     rm -rf listtime	
     head -1 $crossoutput_sky
     #       timeobs=`gethead $FITFILE "date-obs"`
-    dateobs=`gethead $FITFILE "D-OBS-UT"`
-    timeobs=`gethead $FITFILE "T-OBS-UT"`
+   
+    # dateobs=`gethead $FITFILE "D-OBS-UT"`
+    # timeobs=`gethead $FITFILE "T-OBS-UT"`
+    
     echo "NumOT:  " $NumOT
     if [ $NumOT -gt 0 ]
     then
@@ -1399,18 +1411,47 @@ xfilterBrightbg ( )
     echo "xfilterBrightbg"
 }
 
-xgetkeyWords ( )
+xGetKeywords ( )
 {
-    echo "xgetkeyWords"
+    echo "xGetKeywords"
+    tempset=`gethead $FITFILE "tempset" | awk '{print($1)}'`
+    tempact=`gethead $FITFILE "tempact" | awk '{print($1)}'`
     ID_MountCamara=`gethead $FITFILE "IMAGEID"  | cut -c14-17`
     IDccdNum=`echo $FITFILE | cut -c4-5`
+    ccdid=`gethead $FITFILE "CCDID"`
     datenum=`gethead $FITFILE "D-OBS-UT" | sed 's/-//g'`
+    dateobs=`gethead $FITFILE "D-OBS-UT"`
+    timeobs=`gethead $FITFILE "T-OBS-UT"`
     ra1=`gethead $FITFILE "RA"`
     dec1=`gethead $FITFILE "DEC" `
-    ra_mount=`skycoor -d $ra1 $dec1 | awk '{print($1)}'`
-    dec_mount=`skycoor -d $ra1 $dec1 | awk '{print($2)}'`
+    ra_mount=`skycoor -d $ra1 $dec1 | awk '{printf("%.0f\n",$1)}'`
+    dec_mount=`skycoor -d $ra1 $dec1 | awk '{printf("%.0f\n",$2)}'`
     echo $ID_MountCamara $ra1 $dec1 $ra_mount $dec_mount
+    ID_ccdtype=`gethead "CCDTYPE" $FITFILE`
 }
+
+ xUploadImgStatus (  )
+ {
+    echo "date=$xxdateobs 
+    dpmname=$ccdtypeID
+    dfinfo=`df -Th /data | tail -1`
+    curprocnumber=`echo $FITFILE | cut -c23-26`
+    otlist=
+    varilist=
+    imgstatus=$MonitorParameterslog
+    starlist= 
+    origimage=
+    cutimages= " >$configfile
+    echo "curl  http://190.168.1.25/uploadAction.action -F dpmName=$ccdtypeID  -F currentDirectory=$xxdateobs -F configFile=@$configfile -F fileUpload=@$MonitorParameterslog" >xUploadImgStatus.sh
+    echo "upload the image status file to the server" >>$stringtimeForMonitor
+    sh xUploadImgStatus.sh
+    wait
+ 
+}
+
+
+
+
 
 
 xget2sdOT ( )
@@ -1454,8 +1495,6 @@ xget2sdOT ( )
     else
         echo 'Less than 5 images in listsky1 '
     fi
-
-
 }
 
 xOnlyUploadOTAndmag ( )
@@ -1465,26 +1504,27 @@ xOnlyUploadOTAndmag ( )
     #   fwhmnow=`cat fwhm_lastdata | awk '{print($5)}'`
     #   if [ ` echo " $fwhmnow > $fwhm_uplimit " | bc ` -eq 1  ]  #if the fwhm >2.0, donot sent the OT file to server
     #   then
-             prefixlog=`echo $crossoutput_sky | sed 's/.fit.skyOT//g'`
-             configfile=`echo $prefixlog".properties"`
-             xxdateobs=`echo $dateobs | sed 's/-//g'| cut -c3-8`
-             ccdtype=`echo $crossoutput_sky | cut -c4-5 | awk '{print("M"$1)}'`
-             echo "date=$xxdateobs
-             dpmname=$ccdtype
-             dfinfo=`df -Th /data | tail -1`
-             curprocnumber=`echo $crossoutput_sky | cut -c23-26`
-             otlist=$crossoutput_sky
-             varilist=$crossoutput_sky_mag
-             starlist=
-             origimage=
-             cutimages= " >$configfile
-             #echo "==========="
-             #cat  $configfile
-             #echo "==========="
-             #echo $dateobs $xxdateobs
-             #echo "curl  http://190.168.1.25/uploadAction.action -F dpmName=$ccdtype  -F currentDirectory=$xxdateobs -F configFile=@$configfile -F fileUpload=@$crossoutput_sky"
+            #inprefix=`echo $crossoutput_sky | sed 's/.fit.skyOT//g'`
+            configfile=`echo $inprefix".properties"`
+            xxdateobs=`echo $dateobs | sed 's/-//g'| cut -c3-8`
+            ccdtypeID=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1)}'`
+            echo "date=$xxdateobs
+            dpmname=$ccdtypeID
+            dfinfo=`df -Th /data | tail -1`
+            curprocnumber=`echo $FITFILE | cut -c23-26`
+            otlist=$crossoutput_sky
+            varilist=$crossoutput_sky_mag
+            imgstatus
+            starlist=
+            origimage=
+            cutimages= " >$configfile
+            #echo "==========="
+            #cat  $configfile
+            #echo "==========="
+            #echo $dateobs $xxdateobs
+            #echo "curl  http://190.168.1.25/uploadAction.action -F dpmName=$ccdtype  -F currentDirectory=$xxdateobs -F configFile=@$configfile -F fileUpload=@$crossoutput_sky"
 
-             echo "curl  http://190.168.1.25/uploadAction.action -F dpmName=$ccdtype  -F currentDirectory=$xxdateobs -F configFile=@$configfile -F fileUpload=@$crossoutput_sky -F fileUpload=@$crossoutput_sky_mag" >xupload1ot.sh
+             echo "curl  http://190.168.1.25/uploadAction.action -F dpmName=$ccdtypeID  -F currentDirectory=$xxdateobs -F configFile=@$configfile -F fileUpload=@$crossoutput_sky -F fileUpload=@$crossoutput_sky_mag" >xupload1ot.sh
 
              echo "upload the OT file to the server" >>$stringtimeForMonitor
              sh xupload1ot.sh
@@ -1585,7 +1625,6 @@ xMountTrack ( )
     #For this part, it has not finished because it depends on the huanglei's code.
     #xaxis=decaxis
     #yaxis=raaxis
-    ccdid=`gethead $FITFILE "CCDID"`
     case $ccdid in
         A | C | E | G | I | K )
             CCD_set=South;;
@@ -1653,8 +1692,10 @@ xMountTrack ( )
 
     xshiftG_sky=`echo $xshiftG $pixelscale | awk '{printf("%04d\n",$1*$2)}'` # dec axis no any projection relative to the mount point (DEC)
     yshiftG_sky=`echo $yshiftG $deltapixel | awk '{printf("%04d\n",$1*$2)}'` # ra axis 
+    
     #echo $RA_guider $yshiftG $DEC_guider $xshiftG
-    IDccdNum=`echo $FITFILE | cut -c4-5`
+    #IDccdNum=`echo $FITFILE | cut -c4-5`
+
     RADECmsg_sky_tmp=`echo "d#"$IDccdNum"bias"$RA_guider$yshiftG_sky$DEC_guider$xshiftG_sky`
     datestring=`gethead $FITFILE "date-obs"  | sed 's/-//g' | cut -c3-8`
     timestring=`gethead $FITFILE "time-obs"  | sed 's/://g' | cut -c1-6`
@@ -1873,8 +1914,8 @@ do
     xchangehe
    echo "xprereduction " `date` >>$stringtimeForMonitor 
     xprereduction
-   echo "xgetkeyWords " `date` >>$stringtimeForMonitor 
-    xgetkeyWords
+   echo "xGetKeywords " `date` >>$stringtimeForMonitor 
+    xGetKeywords
    echo "xgetstars " `date` >>$stringtimeForMonitor 
     xgetstars
    echo "xmatchimgtemp " `date` >>$stringtimeForMonitor 

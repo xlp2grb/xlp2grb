@@ -338,6 +338,16 @@ xcheckAndMakeTemp_ready (  )
 
 }
 
+xProcessMonitorStatInitialImage (  )
+{
+    echo "=====xProcessMonitorStatInitialImage====="
+    echo "DateObsUT=$dateobs TimeObsUT=$timeobs Obj_Num=$Nstar_ini bgbright=$bgbrightness Fwhm=-99 S2N=-99 AverLimit=-99 Extinc=-99 xshift=-99 yshift=-99 xrms=-99 yrms=-99 OC1=-99 VC1=-99 Image=$fitfile RA=-99 DEC=-99 State=InitialImage TimeProcess=-99 ellipticity=-99 tempset=$tempset tempact=$tempact" | tr ' ' '\n' >$MonitorParameterslog
+    xUploadImgStatus
+    wait
+    #curl $UploadParameterfile  -F fileUpload=@$MonitorParameterslog
+
+}
+
 xProcessMonitorStatInstruCaliImage (  )
 {
     echo "=====xProcessMonitorStatInstruCaliImage====="
@@ -477,6 +487,7 @@ xcheckInitialImage (  )
     else
         echo "Object number in the initial image is not right"
     fi
+#    xProcessMonitorStatInitialImage
     echo $obj_intialimgquality $bgbright_initialimgquality $ObjInitialImage $BgBrightInitialImage >$InitialImagMonitorlog
     curl $UploadParameterfile  -F fileUpload=@$InitialImagMonitorlog
     cd $Dir_rawdata
@@ -934,7 +945,7 @@ do
 				mv oldlist1 oldlist
 			else  # object frames
 				echo "it is an object image"  `date` >> $stringtimeForMonitor
-                cat listmatch1 | grep -v "_5_" | grep -v "_6_" | head -1 >list # to reduce the new image always, but might miss some images.   it is might be _1_ for obj or _7_ for temp model 
+                cat listmatch1 | grep -v "_5_" | grep -v "_6_" | tail -1 >list # to reduce the new image always, but might miss some images.   it is might be _1_ for obj or _7_ for temp model 
 				cp -f list listmatch
 				echo "copy list to listmatch"  `date` >> $stringtimeForMonitor
 				if test ! -r listreduc
