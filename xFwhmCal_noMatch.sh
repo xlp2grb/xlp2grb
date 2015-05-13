@@ -61,13 +61,14 @@ FITFILE=$2
 OUTPUT_fwhm=`echo $FITFILE | sed 's/\.fit/.fit.fwhm/'`
 fwhmmax=10
 fwhmmin=1.2
+ejmin=20
+ejmax=3030
 echo $DIR_data $FITFILE $OUTPUT_fwhm
 OUTPUT_ini=`echo $FITFILE | sed 's/\.fit/.fit.sexini/'`
 OUTPUT_bg=`echo $FITFILE | sed 's/\.fit/.bg.fit/'`
 sex $FITFILE  -c  xmatchdaofind.sex -DETECT_THRESH 3.0 -ANALYSIS_THRESH 3.0 -CATALOG_NAME $OUTPUT_ini -CHECKIMAGE_TYPE BACKGROUND -CHECKIMAGE_NAME $OUTPUT_bg
 rm -rf $OUTPUT_bg
 
-======================================
 NStar_ini=`cat $OUTPUT_ini | wc -l | awk '{print($1)}'`
 rm -rf newbgbrightres.cat
 cat $OUTPUT_ini | awk '{if($1>ejmin && $1<ejmax && $2>ejmin && $2<ejmax)print($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)}' ejmin=$ejmin ejmax=$ejmax          >newbgbright.cat
@@ -78,6 +79,7 @@ then
     echo "No file of newbgbrightres.cat"
     echo $NStar_ini -99 -99 $FITFILE >ObjAndBgbrightAndEllipFile
 else        
+    cat newbgbrightres.cat
     bgbrightness=`cat newbgbrightres.cat | awk '{printf("%.1f\n", $1)}'`
     avellip=`cat newbgbrightres.cat | awk '{printf("%.2f\n",$2)}'`
     echo "bg brightness is : " $bgbrightness
@@ -86,8 +88,6 @@ else
   fi          
 
 
-
-======================================
 cat $OUTPUT_ini | sort -n -k 7 | awk '{if($1>500 && $1<2500 && $2>500 && $2<2500 && $4==0) print($1,$2,"1 a")}'| head -500 >newimageStandxy.db
 NstarForfwhm=`wc -l newimageStandxy.db | awk '{print($1)}'`
 if [ $NstarForfwhm -lt $NstarForfwhmLimit ]

@@ -1427,6 +1427,9 @@ xGetKeywords ( )
     ra_mount=`skycoor -d $ra1 $dec1 | awk '{printf("%.0f\n",$1)}'`
     dec_mount=`skycoor -d $ra1 $dec1 | awk '{printf("%.0f\n",$2)}'`
     echo $ID_MountCamara $ra1 $dec1 $ra_mount $dec_mount
+    configfile=`echo $inprefix".properties"`
+    xxdateobs=`echo $dateobs | sed 's/-//g'| cut -c3-8`
+    ccdtypeID=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1)}'`
     ID_ccdtype=`gethead "CCDTYPE" $FITFILE`
 }
 
@@ -1506,8 +1509,8 @@ xOnlyUploadOTAndmag ( )
     #   then
             #inprefix=`echo $crossoutput_sky | sed 's/.fit.skyOT//g'`
             configfile=`echo $inprefix".properties"`
-            xxdateobs=`echo $dateobs | sed 's/-//g'| cut -c3-8`
-            ccdtypeID=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1)}'`
+            #xxdateobs=`echo $dateobs | sed 's/-//g'| cut -c3-8`
+            #ccdtypeID=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1)}'`
             echo "date=$xxdateobs
             dpmname=$ccdtypeID
             dfinfo=`df -Th /data | tail -1`
@@ -1540,10 +1543,10 @@ xOnlyUploadOTAndmag ( )
 
 xOnlyUploadMagOT ( )
 {
-     prefixlog=`echo $crossoutput_sky_mag | sed 's/.fit.skymagOT//g'`
-     configfile=`echo $prefixlog"_vari.properties"`
-     xxdateobs=`echo $dateobs | sed 's/-//g'| cut -c3-8`
-     ccdtype=`echo $crossoutput_sky_mag | cut -c4-5 | awk '{print("M"$1)}'`
+     #prefixlog=`echo $crossoutput_sky_mag | sed 's/.fit.skymagOT//g'`
+     #configfile=`echo $prefixlog"_vari.properties"`
+     #xxdateobs=`echo $dateobs | sed 's/-//g'| cut -c3-8`
+     #ccdtype=`echo $crossoutput_sky_mag | cut -c4-5 | awk '{print("M"$1)}'`
      echo "date=$xxdateobs
      dpmname=$ccdtype
      dfinfo=`df -Th /data | tail -1`
@@ -1855,6 +1858,7 @@ xcheckMatchResult (   )
         Num_listreupdate=`cat listreupdate | wc -l | awk '{print($1)}'`
         if [ $Num_listreupdate > 20  ]
         then
+            echo "===xuptempbyhand_new.sh==="
             ./xuptempbyhand_new.sh $ra_mount $dec_mount $CCDID  update
         fi
         
