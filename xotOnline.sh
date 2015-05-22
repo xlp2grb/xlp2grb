@@ -56,6 +56,8 @@ echo "---------xwfits2fit-------" `date` >>$stringtimeForMonitor
 fitfile=`echo $FILE | sed 's/.fits/.fit/'`
 fitfilegz=`echo $FILE | sed 's/.fits/.fit.gz/'`
 inprefix=`echo $FILE | sed 's/.fits//'`
+rm -rf Newimage.fits
+cp $FILE Newimage.fits
 #echo $fitfilegz $fitfile
 echo "in xwfits2fit, begin to use iraf " `date` >>$stringtimeForMonitor
 echo $Dir_rawdata
@@ -65,7 +67,8 @@ echo noao >> login.cl
 echo image >> login.cl
 echo dataio >>login.cl
 echo "cd $Dir_rawdata" >> login.cl
-echo "wfit(iraf_fil=\"$FILE\",fits_fil=\"$inprefix\",fextn=\"fit\",extensi-,global_+,make_im+,long_he-,short_h-,bitpix=16,blockin=0,scale+,autosca+)" >>login.cl
+#echo "wfit(iraf_fil=\"$FILE\",fits_fil=\"$inprefix\",fextn=\"fit\",extensi-,global_+,make_im+,long_he-,short_h-,bitpix=16,blockin=0,scale+,autosca+)" >>login.cl
+echo "wfit(iraf_fil=\"Newimage.fits\",fits_fil=\"$inprefix\",fextn=\"fit\",extensi-,global_+,make_im+,long_he-,short_h-,bitpix=16,blockin=0,scale+,autosca+)" >>login.cl
 echo logout >>login.cl
 cl < login.cl >xlogfile
 #cl <login.cl
@@ -81,7 +84,7 @@ if test ! -r fitsbakfile
 then
 	mkdir fitsbakfile
 fi
-rm -rf $FILE 
+#rm -rf $FILE 
 #mv $fitfilegz $FILE fitsbakfile
 mv $fitfilegz fitsbakfile
 #rm -rf $fitfile
@@ -770,11 +773,14 @@ then
 	Nimhead=`imhead $FILE | wc -l | awk '{print($1)}'`
 	if [ ` echo " $Nimhead < 50 " | bc ` -eq 1 ]
 	then
-     		 echo "imhead is not complete"
-    		 echo "imhead is not complete"  `date` >>$stringtimeForMonitor
+     	echo "imhead is not complete"
+    	echo "No lsof.cat, imhead is not complete"  `date` >>$stringtimeForMonitor
+    else
+        echo "No lsof.cat "  `date` >>$stringtimeForMonitor
  	fi
 else
 	sleep 2
+    echo "Have lsof.cat, sleep 2"  `date` >>$stringtimeForMonitor
 fi 
 xwfits2fit  #if it is a fits
 wait
@@ -796,6 +802,7 @@ wait
 # cd $Dir_redufile
   #&&&&&&&&&&&&&&&&&&#@@@@@#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
   MonitorParameterslog=`echo $fitfile | sed 's/\.fit/.fit.monitorParaLog/'`
+  echo $MonitorParameterslog
   if  [ "$ID_ccdtype"x = "OBJECT"x ] # it is an object image
   then 
     #  if test -r recopy_WrongCCDtype.flag
@@ -898,6 +905,11 @@ do
 	then
         	touch oldlist
 	fi
+    if test ! -r fitsbakfile
+    then
+        mkdir fitsbakfile
+
+    fi
 
 #	if test ! -r M*.fits
 #	then

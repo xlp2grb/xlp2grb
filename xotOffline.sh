@@ -782,6 +782,7 @@ wait
 # cd $Dir_redufile
   #&&&&&&&&&&&&&&&&&&#@@@@@#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
   MonitorParameterslog=`echo $fitfile | sed 's/\.fit/.fit.monitorParaLog/'`
+  echo $MonitorParameterslog
   if  [ "$ID_ccdtype"x = "OBJECT"x ] # it is an object image
   then 
     #  if test -r recopy_WrongCCDtype.flag

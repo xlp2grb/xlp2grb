@@ -399,7 +399,7 @@ xgetstars (  )
     cd $DIR_data	
     rm -rf $bg
     xfits2jpg &
-    xSentObjAndBgAndEllip &
+    xSentObjAndBgAndEllip 
     #echo "Background brightness: " $bgbrightness
     if [ $NStar_ini -lt $Nstar_ini_limit ]
     then
@@ -425,7 +425,8 @@ xgetstars (  )
         #        	break
         #	fi
     else 
-        if [ $bgbrightness -gt $Nbgbright_ini_uplimit ] #if the brightness of background is too high, This image shall not reduced and no output for the FWHM
+        if [ ` echo " $bgbrightness > $Nbgbright_ini_uplimit " | bc ` -eq 1  ]
+        #if [ $bgbrightness -gt $Nbgbright_ini_uplimit ] #if the brightness of background is too high, This image shall not reduced and no output for the FWHM
         then
             echo "Background is too brightness: " $bgbrightness
             echo $FITFILE "Background is too brightness: " $bgbrightness >>$stringtimeForMonitor
@@ -1353,8 +1354,8 @@ xcheckpsf_Variable (  )
     #========================================
     #check the variable candidates for fwhm, No filter is done.
     echo "psf checking for Variables"
-    NumOT=`wc -l $crossoutput_mag | awk '{print($1)}'`
-    if [  $NumOT -gt 0  ] 
+    Num_Variable=`wc -l $crossoutput_mag | awk '{print($1)}'`
+    if [  $Num_Variable -gt 0  ] 
     then
        cat $crossoutput_sky_mag | awk '{print($3,$4, "  1 a")}' >psf.dat
        cd $HOME/iraf
@@ -1422,8 +1423,8 @@ xfilterBrightbg ( )
 xGetKeywords ( )
 {
     echo "xGetKeywords"
-    tempset=`gethead $FITFILE "tempset" | awk '{print($1)}'`
-    tempact=`gethead $FITFILE "tempact" | awk '{print($1)}'`
+    tempset=`gethead $FITFILE "tempset" | awk '{printf("%.2f\n", $1)}'`
+    tempact=`gethead $FITFILE "tempact" | awk '{printf("%.2f\n",$1)}'`
     ID_MountCamara=`gethead $FITFILE "IMAGEID"  | cut -c14-17`
     IDccdNum=`echo $FITFILE | cut -c4-5`
     ccdid=`gethead $FITFILE "CCDID"`
