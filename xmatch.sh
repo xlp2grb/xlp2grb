@@ -991,8 +991,11 @@ xcrossmatchwithR1Merr1 ( )
 
     #select out those at the edge of the image.
     #        cp $crossoutput_xy newoutput_chb.dat
-    cat $crossoutput_xy | awk '{if($1>ejmin && $1<ejmax && $2>ejmin && $2<ejmax && $13==2) print($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)}' ejmin=$ejmin ejmax=$ejmax | grep -v "99.000" >$crossoutput_mag   # new variables
-    cat $crossoutput_xy | awk '{if($1>ejmin && $1<ejmax && $2>ejmin && $2<ejmax && $13==1) print($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)}' ejmin=$ejmin ejmax=$ejmax | grep -v "99.000" >temp
+#    cat $crossoutput_xy | awk '{if($1>ejmin && $1<ejmax && $2>ejmin && $2<ejmax && $13==2) print($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)}' ejmin=$ejmin ejmax=$ejmax | grep -v "99.000" >$crossoutput_mag   # new variables
+#    cat $crossoutput_xy | awk '{if($1>ejmin && $1<ejmax && $2>ejmin && $2<ejmax && $13==1) print($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)}' ejmin=$ejmin ejmax=$ejmax | grep -v "99.000" >temp
+    cat $crossoutput_xy | awk '{if($1>ejmin && $1<ejmax && $2>ejmin && $2<ejmax && $9<1 && $13==2) print($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)}' ejmin=$ejmin ejmax=$ejmax | grep -v "99.000" >$crossoutput_mag   # new variables  $9 is the ellipticity if $9==1 it would be hot pixel
+    cat $crossoutput_xy | awk '{if($1>ejmin && $1<ejmax && $2>ejmin && $2<ejmax && $9<1 &&$13==1) print($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)}' ejmin=$ejmin ejmax=$ejmax | grep -v "99.000" >temp  
+
     mv temp $crossoutput_xy  #new ot candidates 
     #        NumOT=`wc $crossoutput_xy | awk '{print($1)}'`
 
