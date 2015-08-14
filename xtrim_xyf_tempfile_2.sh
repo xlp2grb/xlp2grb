@@ -65,7 +65,7 @@ xcopyNewFileFromRawoDataFile (   )
 xmkupload (  )
 {
     #echo "---xmkupload---"
-    pnglist=`cat listotxyforupload | awk '{print($1,","$4,",")}' | tr '\n' ' ' | sed 's/, $//'`
+    pnglist=`cat listotxyforupload | awk '{print($1,","$4,","$5,",")}' | tr '\n' ' ' | sed 's/, $//'`
     fitfile=`head -1 $listotxy | awk '{print($1)}'`
     dateobs=`echo $fitfile | cut -c7-12`
     ccdtype=`echo $fitfile | cut -c4-5 | awk '{print("M"$1)}'`
@@ -74,7 +74,7 @@ xmkupload (  )
 
     #echo $crossoutput_sky  $prefixlog $configfile
     #echo "pnglist are :  "  $pnglist
-    pnguploadlist=`cat listotxyforupload | awk '{print("-F fileUpload=@"$1,"-F fileUpload=@"$4)}' | tr '\n' ' '`
+    pnguploadlist=`cat listotxyforupload | awk '{print("-F fileUpload=@"$1,"-F fileUpload=@"$4,"-F fileUpload=@"$5)}' | tr '\n' ' '`
     #echo "pnguploadlist:  " $pnguploadlist
 
     echo "date=$dateobs
@@ -111,7 +111,9 @@ xcopytemp (   )
     echo $tempfilenamefinal >listtemp_dirname  #this file for the update the file xUpdate_refcom3d.cat.sh 
     cp -fr $tempfilenamefinal/refcom_subbg.fit $Dir_trimforTemp
     wait
-    echo "copy the $tempfilenamefinal/refcom_subbg.fit to the directory for tempfile " >>$fitscutpngmonitor
+    cp -fr $tempfilenamefinal/refcom3d.cat $Dir_trimforTemp
+    wait
+    echo "copy the $tempfilenamefinal/refcom_subbg.fit and refcom3d.cat to the directory for tempfile " >>$fitscutpngmonitor
     TempForcutImg=refcom_subbg.fit 
    #mv refcom_subbg.fit $TempForcutImg
     Date_refimage=`gethead $TempForcutImg "D-OBS-UT" | sed 's/-//g'`
@@ -197,6 +199,15 @@ done
 rm -rf newfile_listotxy
 }
 
+xmarkrefcom3d (  )
+{
+    ds9PadNum=`ps -all | awk '{if($14=="ds9") print($4)}'`
+    kill -9 $ds9PadNum
+    ds9 -fits $imsubname -scale zscale -zoom to fit -regions format xy -regions load $region_allobj -saveimage jpeg $jpgimg_allobj &
+
+}
+
+
 xtrimsubimage ( )
 {
     #echo "========xtrimsubimage==========="
@@ -223,8 +234,10 @@ xtrimsubimage ( )
     FILEforsub=`echo $TempForcutImg`
     echo "@@@@@@@@@@@@@@@@@@@@"
     jpgimg=`echo $jpgimg_origin"_"$datetimestring".jpg"`
+    jpgimg_allobj=`echo $jpgimg_origin"_"$datetimestring"_allobj.jpg"`
+    region_allobj=`echo $jpgimg_origin"_"$datetimestring"_allobj.region"`
     echo "modified name is "$jpgimg
-    echo $imsubname $xim $yim $jpgimg >>listotxyforupload
+    echo $imsubname $xim $yim $jpgimg $jpgimg_allobj >>listotxyforupload
     echo $FILEforsub $xim $yim $jpgimg >>listotxyforuploadForcutjpg
 
     #====================
@@ -275,6 +288,9 @@ xtrimsubimage ( )
     #xot_sub=`echo $xim $xmin $xshift | awk '{print($1-$2+$3)}'`
     #yot_sub=`echo $yim $ymin $yshift | awk '{print($1-$2+$3)}'`
     imtrimregion=`echo "["$xmin":"$xmax","$ymin":"$ymax"]"`
+
+    cat refcom3d.cat | awk '{if($1>xmin && $1<xmax && $2>ymin && $2<ymax)print("circle", $1-xmin,$2-ymin, "2")} ' xmin=$xmin ymin=$ymin xmax=$xmax ymax=$ymax >$region_allobj
+    
     #======================================================         
     #echo "using iraf.ccdpro to cut the fit"
     echo $imtrimregion
@@ -294,6 +310,7 @@ xtrimsubimage ( )
     cd $DIR_data
     sethead -kr X xim=$xim yim=$yim Trimsec=$imtrimregion  imwhole=$FILEforsub  $imsubname
 
+    xmarkrefcom3d
 
 }
 

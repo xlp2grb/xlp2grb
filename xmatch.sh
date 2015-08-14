@@ -13,7 +13,7 @@
 # modifed by xlp at 20130.13
 #reduction time is reduced from 13 sec to 7 sec.
 #rm -rf listsky*
-DIR_data=`pwd`
+Dir_redufile=`pwd`
 
 #=====================
 Dir_monitor=/data2/workspace/monitor
@@ -49,11 +49,11 @@ ejmin=300  #3056-(20sqrdegree*3600/29.8arcsec)/2 = 320
 #This makes sure that the effective FoV for one image is as larger as 20*20 sqr degrees
 #The difference of 20 pixel makes that two ccds on one mount could be overlap even though the angle of 0.76 degrees  between two CCDs  
 ejmax=`echo $CCDsize | awk '{print($1-ejmin)}' ejmin=$ejmin` 
-crossRedius=1.8
+crossRedius=1.5
 diffmag=2.0
-crossRedius_inner=1.8
-crossRedius_outer=2.0
-PSF_Critical_min=1.0
+crossRedius_inner=1.5
+crossRedius_outer=1.8
+PSF_Critical_min=1.15
 PSF_Critical_max=5.0
 darkname=Dark.fit
 flatname=Flat_bg.fit
@@ -61,12 +61,16 @@ dir_basicimage=/data2/workspace/basicfile
 DIR_CVfile=/data2/workspace/cvfile
 DIR_badpixlefile=/data2/workspace/badpixelfile
 pixelscale=29.8 #arcsec
-DETECT_TH=3.0
-maglimitSigma=6
+DETECT_TH=2.0
+maglimitSigma=5.0
+ra_imgCenter=`cat listemp_radecForImg | awk '{printf("%.6f\n",$1)}'`
+dec_imgCenter=`cat listemp_radecForImg | awk '{printf("%.6f\n",$2)}'`
+
 
 Nstar_ini_limit=2000  #The lower limit of star num. in the image
 Nbgbright_ini_uplimit=30000 #The upper limit of background brightness
 fwhm_uplimit=2.0
+NumOT_center_max=100
 #datenum=`date +%Y%m%d`
 #Nf=0
 #rm -rf matchchb.log matchchb_all.log
@@ -144,6 +148,8 @@ xdefinefilename ( )
     xyxymatchResult=`echo $FITFILE | sed 's/\.fit/.fit.xyxymatchDeltaY.png/'`
     flux_calibration_png=`echo $FITFILE | sed 's/\.fit/.fit.fluxcali.png/'`
     MonitorParameterslog=`echo $FITFILE | sed 's/\.fit/.fit.monitorParaLog/'`
+    imagetransfluxCali=`echo $FITFILE | sed 's/\.fit/.fit.imagetransfluxCali/'`
+    imagetransFluxCaliPnG=`echo $FITFILE | sed 's/\.fit/.fit.imagetransfluxCali.png/'`
     echo $FITFILE 
 }
 
@@ -155,13 +161,13 @@ xchangehe ( )
     cp -f login.cl.old login.cl
     echo noao >> login.cl
     echo astutil >> login.cl
-    echo "cd $DIR_data" >> login.cl
+    echo "cd $Dir_redufile" >> login.cl
     echo "setjd(\"$FITFILE\", date=\"D-OBS-UT\",time=\"T-OBS-UT\")" >>login.cl
     echo logout >> login.cl
     cl < login.cl >xlogfile
     cd $HOME/iraf
     cp -f login.cl.old login.cl
-    cd $DIR_data
+    cd $Dir_redufile
 }
 xprereduction ( )
 {
@@ -169,8 +175,8 @@ xprereduction ( )
     then
         if [  -r $dir_basicimage/$darkname ]
         then
-            cp $dir_basicimage/$darkname $DIR_data
-            cp $dir_basicimage/badpixelFile.db $DIR_data
+            cp $dir_basicimage/$darkname $Dir_redufile
+            cp $dir_basicimage/badpixelFile.db $Dir_redufile
             echo "dark image copy and correcion"
             echo "dark image copy and correction" >>$stringtimeForMonitor
             ./xdarkcorr.sh $FITFILE $darkname
@@ -187,7 +193,7 @@ xprereduction ( )
     then
         if [  -r $dir_basicimage/$flatname ]
         then
-            cp $dir_basicimage/$flatname $DIR_data
+            cp $dir_basicimage/$flatname $Dir_redufile
             echo "flat copy and correction" >>$stringtimeForMonitor
             ./xflatcorr.sh $FITFILE $flatname
         else
@@ -230,7 +236,7 @@ xSentObjAndBgAndEllip (  )
    #wait
    ./xavbgbrightAndEllip  #output is the averagebg and average_ellip
    wait
-    if test ! -r newbgbrightres.cat
+    if test ! -s newbgbrightres.cat
     then
         echo "no result of bg brightness"
         continue
@@ -346,32 +352,37 @@ xMakefalseValueFormonitor_LimitmagDiffmag (  )
 xProcessMonitorStatObjNumSmall (  )
 {
     echo "This case shows that the  obj num is smaller than 3000 or bg is too bright"
-    echo "DateObsUT=$dateobs TimeObsUT=$timeobs Obj_Num=$NStar_ini bgbright=$bgbrightness Fwhm=-99 S2N=-99 AverLimit=-99 Extinc=-99 xshift=-99 yshift=-99 xrms=-99 yrms=-99 OC1=-99 VC1=-99 Image=$FITFILE RA=$ra_mount DEC=$dec_mount State=ObjNumSmall TimeProcess=$time_need  ellipticity=$avellip tempset=$tempset tempact=$tempact" | tr ' ' '\n' >$MonitorParameterslog
+    TimeProcessEnd=`date -u +%Y%m%d%H%M%S`
+    echo "DateObsUT=$dateobs TimeObsUT=$timeobs Image=$FITFILE DirData=$DirData ra_mount=$ra_mount dec_mount=$dec_mount exptime=$exptime ra_imgCenter=$ra_imgCenter dec_imgCenter=$dec_imgCenter tempset=$tempset tempact=$tempact Fwhm=-99 ellipticity=$avellip xshift=-99 yshift=-99 xrms=-99 yrms=-99 OC1=-99 VC1=-99 Obj_Num=$NStar_ini bgbright=$bgbrightness AverDeltaMag=-99 AverLimit=-99 Extinc=-99 State=ObjNumSmall TimeProcess=$time_need TimeProcessEnd=$TimeProcessEnd" | tr ' ' '\n' >$MonitorParameterslog
 }
 
 xProcessMonitorStatReTrack (  )
 {
     echo "This case shows that the ReTrack for the large rms after match"   
-    echo "DateObsUT=$dateobs TimeObsUT=$timeobs Obj_Num=$NStar_ini bgbright=$bgbrightness Fwhm=-99 S2N=-99 AverLimit=-99 Extinc=-99 xshift=$xxshift yshift=$yyshift xrms=$xrms yrms=$yrms OC1=-99 VC1=-99 Image=$FITFILE RA=$ra_mount DEC=$dec_mount State=Retrack TimeProcess=$time_need ellipticity=$avellip tempset=$tempset tempact=$tempact" | tr ' '  '\n' >$MonitorParameterslog
+    TimeProcessEnd=`date -u +%Y%m%d%H%M%S`
+    echo "DateObsUT=$dateobs TimeObsUT=$timeobs Image=$FITFILE DirData=$DirData ra_mount=$ra_mount dec_mount=$dec_mount exptime=$exptime ra_imgCenter=$ra_imgCenter dec_imgCenter=$dec_imgCenter tempset=$tempset tempact=$tempact Fwhm=-99 ellipticity=$avellip xshift=$xxshift yshift=$yyshift xrms=$xrms yrms=$yrms OC1=-99 VC1=-99 Obj_Num=$NStar_ini bgbright=$bgbrightness AverDeltaMag=-99 AverLimit=-99 Extinc=-99 State=Retrack TimeProcess=$time_need TimeProcessEnd=$TimeProcessEnd" | tr ' ' '\n' >$MonitorParameterslog
 }
 xProcessMonitorStatUpdateTemp (  )
 {
     echo "This case shows the update for the temp"
     fwhmnow=`cat fwhm_lastdata | awk '{print($5)}'`
-    echo "DateObsUT=$dateobs TimeObsUT=$timeobs Obj_Num=$NStar_ini bgbright=$bgbrightness Fwhm=$fwhmnow S2N=$S2N AverLimit=$averagelimit Extinc=-99 xshift=$xxshift yshift=$yyshift xrms=$xrms yrms=$yrms OC1=$NumOT VC1=$Num_Variable Image=$FITFILE RA=$ra_mount DEC=$dec_mount State=UpdateTemp TimeProcess=$time_need ellipticity=$avellip tempset=$tempset tempact=$tempact" | tr ' ' '\n'>$MonitorParameterslog
+    TimeProcessEnd=`date -u +%Y%m%d%H%M%S`
+    echo "DateObsUT=$dateobs TimeObsUT=$timeobs Image=$FITFILE DirData=$DirData ra_mount=$ra_mount dec_mount=$dec_mount exptime=$exptime ra_imgCenter=$ra_imgCenter dec_imgCenter=$dec_imgCenter tempset=$tempset tempact=$tempact Fwhm=$fwhmnow ellipticity=$avellip xshift=$xxshift yshift=$yyshift xrms=$xrms yrms=$yrms OC1=$NumOT VC1=$Num_Variable Obj_Num=$NStar_ini bgbright=$bgbrightness AverDeltaMag=$AverDeltaMag AverLimit=$averagelimit Extinc=-99 State=UpdateTemp TimeProcess=$time_need TimeProcessEnd=$TimeProcessEnd" | tr ' ' '\n' >$MonitorParameterslog
 }    
 xProcessMonitorStatUpdateTemp2 (  )
 {
     echo "This case shows the update for the temp since the num of OT1 is larger than 30"
     fwhmnow=`cat fwhm_lastdata | awk '{print($5)}'`
-    echo "DateObsUT=$dateobs TimeObsUT=$timeobs Obj_Num=$NStar_ini bgbright=$bgbrightness Fwhm=$fwhmnow S2N=$S2N AverLimit=$averagelimit Extinc=-99 xshift=$xxshift yshift=$yyshift xrms=$xrms yrms=$yrms OC1=$NumOT VC1=$Num_Variable Image=$FITFILE RA=$ra_mount DEC=$dec_mount State=LargeOT1 TimeProcess=$time_need ellipticity=$avellip tempset=$tempset tempact=$tempact" | tr ' '  '\n' >$MonitorParameterslog
+    TimeProcessEnd=`date -u +%Y%m%d%H%M%S`
+    echo "DateObsUT=$dateobs TimeObsUT=$timeobs Image=$FITFILE DirData=$DirData ra_mount=$ra_mount dec_mount=$dec_mount exptime=$exptime ra_imgCenter=$ra_imgCenter dec_imgCenter=$dec_imgCenter tempset=$tempset tempact=$tempact Fwhm=$fwhmnow ellipticity=$avellip xshift=$xxshift yshift=$yyshift xrms=$xrms yrms=$yrms OC1=$NumOT VC1=$Num_Variable Obj_Num=$NStar_ini bgbright=$bgbrightness AverDeltaMag=$AverDeltaMag AverLimit=$averagelimit Extinc=-99 State=LargeOT1 TimeProcess=$time_need TimeProcessEnd=$TimeProcessEnd" | tr ' ' '\n' >$MonitorParameterslog
 }    
 
 xProcessMonitorStatObjMonitor (  )
 {
     echo "This case shows the Obj monitor"
     fwhmnow=`cat fwhm_lastdata | awk '{print($5)}'`
-    echo "DateObsUT=$dateobs TimeObsUT=$timeobs Obj_Num=$NStar_ini bgbright=$bgbrightness Fwhm=$fwhmnow S2N=$S2N AverLimit=$averagelimit Extinc=-99 xshift=$xxshift yshift=$yyshift xrms=$xrms yrms=$yrms OC1=$NumOT VC1=$Num_Variable Image=$FITFILE RA=$ra_mount DEC=$dec_mount State=ObjMonitor TimeProcess=$time_need ellipticity=$avellip tempset=$tempset tempact=$tempact" | tr ' ' '\n'>$MonitorParameterslog
+    TimeProcessEnd=`date -u +%Y%m%d%H%M%S`
+    echo "DateObsUT=$dateobs TimeObsUT=$timeobs Image=$FITFILE DirData=$DirData ra_mount=$ra_mount dec_mount=$dec_mount exptime=$exptime ra_imgCenter=$ra_imgCenter dec_imgCenter=$dec_imgCenter tempset=$tempset tempact=$tempact Fwhm=$fwhmnow ellipticity=$avellip xshift=$xxshift yshift=$yyshift xrms=$xrms yrms=$yrms OC1=$NumOT VC1=$Num_Variable Obj_Num=$NStar_ini bgbright=$bgbrightness AverDeltaMag=$AverDeltaMag AverLimit=$averagelimit Extinc=-99 State=ObjMonitor TimeProcess=$time_need TimeProcessEnd=$TimeProcessEnd" | tr ' ' '\n' >$MonitorParameterslog
 }    
 
 xgetstars (  )
@@ -380,7 +391,7 @@ xgetstars (  )
     wc $OUTPUT_ini | awk '{print("Star_num  " $1)}' >>list_matchmatss
     wc $OUTPUT_ini | awk '{print("Star_num  " $1)}' >>$stringtimeForMonitor	
     NStar_ini=`cat $OUTPUT_ini | wc -l | awk '{printf("%.0f\n", $1)}'`
-    bgbrightness=`head -1 $OUTPUT_ini | awk '{printf("%.0f\n",$5)}'`
+ #   bgbrightness=`head -1 $OUTPUT_ini | awk '{printf("%.0f\n",$5)}'`
     #ra1=`gethead $FITFILE "RA"`
     #dec1=`gethead $FITFILE "DEC"`
 
@@ -390,13 +401,13 @@ xgetstars (  )
     echo digiphot >> login.cl
     echo image >> login.cl
     echo imcoords >>login.cl
-    echo "cd $DIR_data" >> login.cl
+    echo "cd $Dir_redufile" >> login.cl
     echo "imarith(\"$FITFILE\",\"-\",\"$bg\",\"$FITFILE_subbg\")" >>login.cl
     echo logout >> login.cl
     cl < login.cl>xlogfile
     cd $HOME/iraf
     cp -f login.cl.old login.cl
-    cd $DIR_data	
+    cd $Dir_redufile	
     rm -rf $bg
     xfits2jpg &
     xSentObjAndBgAndEllip 
@@ -420,7 +431,7 @@ xgetstars (  )
 	wait
         break
         #	else
-        #		./xFwhmCal_noMatch.sh $DIR_data $FITFILE
+        #		./xFwhmCal_noMatch.sh $Dir_redufile $FITFILE
         #		xtimeCal
         #        	break
         #	fi
@@ -446,7 +457,7 @@ xgetstars (  )
             #	then
             #		echo "Background is too brightness: " $bgbrightness
             #                echo "Background is too brightness: " $bgbrightness >>$stringtimeForMonitor	
-            #		./xFwhmCal_noMatch.sh $DIR_data $FITFILE
+            #		./xFwhmCal_noMatch.sh $Dir_redufile $FITFILE
             #		xtimeCal
             #		break
         fi
@@ -457,7 +468,7 @@ xgetstars (  )
 xreTrack (  )
 {
     ls $FITFILE >>xNomatch.flag
-    #./xFwhmCal_noMatch.sh $DIR_data $FITFILE & 
+    #./xFwhmCal_noMatch.sh $Dir_redufile $FITFILE & 
     Nnomatchimg=`cat xNomatch.flag | wc -l | awk '{print($1)}'`
     if [  $Nnomatchimg -gt 20   ]
     then
@@ -503,7 +514,7 @@ xmatchimgtempFailed (  )
     tail -1 list_matchmatss >>$stringtimeForMonitor
     echo "rms is too much larger,image match faild"
     xreTrack
-    #./xFwhmCal_noMatch.sh $DIR_data $FITFILE
+    #./xFwhmCal_noMatch.sh $Dir_redufile $FITFILE
     #xtimeCal
     #break
     #rm -rf $allfile
@@ -559,14 +570,14 @@ xmatchimgtemp ( )
     cp -f login.cl.old login.cl
     echo noao >> login.cl
     echo image >> login.cl
-    echo "cd $DIR_data" >> login.cl
+    echo "cd $Dir_redufile" >> login.cl
     echo "xyxymatch(\"$OUTPUT_newfirst\",\"$tempmatchstars\", \"$imagetmp3sd\",toleranc=$toleranceradius, xcolumn=1,ycolumn=2,xrcolum=1,yrcolum=2,separation=7, matchin=\"$matchflag\", inter-,verbo-) " >>login.cl
     echo "geomap(\"$imagetmp3sd\", \"$imagetrans3sd\", transfo=\"$inprefix\", verbos-, xmin=1, xmax=$xNpixel, ymin=1, ymax=$yNpixel,fitgeom=\"general\", functio=\"legendre\",xxorder=$fitorder,xyorder=$fitorder,xxterms=\"half\",yxorder=$fitorder,yyorder=$fitorder,yxterms=\"half\", maxiter=5,reject=3,inter-)" >>login.cl
     echo logout >> login.cl
     cl < login.cl >xlogfile
     cd $HOME/iraf
     cp -f login.cl.old login.cl
-    cd $DIR_data
+    cd $Dir_redufile
     xrms=`cat $imagetrans3sd | grep "xrms" | awk '{print($2)}'`
     yrms=`cat $imagetrans3sd | grep "yrms" | awk '{print($2)}'`
     xxshift=`cat $imagetrans3sd | grep "xshift" | awk '{print($2)}'`
@@ -606,7 +617,7 @@ xmatchimgtemp ( )
             cp -f login.cl.old login.cl
             echo noao >> login.cl
             echo image >>login.cl
-            echo "cd $DIR_data" >> login.cl
+            echo "cd $Dir_redufile" >> login.cl
             echo "xyxymatch(\"$OUTPUT_new\",\"$tempmatchstars\", \"$imagetmp1sd\",toleranc=$toleranceredius, xcolumn=1,ycolumn=2,xrcolum=1,yrcolum=2,separation=7, matchin=\"$matchflag\", inter-,verbo-) " >>login.cl
             echo "geomap(\"$imagetmp1sd\", \"$imagetrans1sd\", transfo=\"$inprefix\", verbos-, xmin=1, xmax=$xNpixel, ymin=1, ymax=$xNpixel,fitgeom=\"general\", functio=\"legendre\",xxorder=$fitorder,xyorder=$fitorder,xxterms=\"half\",yxorder=$fitorder,yyorder=$fitorder,yxterms=\"half\", maxiter=5,reject=3,inter-)" >>login.cl
             echo "geoxytran(\"$OUTPUT\", \"$OUTPUT_geoxytran1\",\"$imagetrans1sd\", transfo=\"$inprefix\",geometr=\"geometric\",directi=\"backward\",xcolumn=1,ycolumn=2,calctyp=\"double\",min_sig=7)" >>login.cl
@@ -614,7 +625,7 @@ xmatchimgtemp ( )
             cl < login.cl >xlogfile
             cd $HOME/iraf
             cp -f login.cl.old login.cl
-            cd $DIR_data
+            cd $Dir_redufile
             #		        mv mattmp $imagetmp1sd
             #		        mv transform.db $imagetrans1sd
             echo "for imagetrans1sd,rms:"
@@ -655,7 +666,7 @@ xmatchimgtemp ( )
             cp -f login.cl.old login.cl
             echo noao >> login.cl
             echo image >>login.cl
-            echo "cd $DIR_data" >> login.cl
+            echo "cd $Dir_redufile" >> login.cl
             echo "xyxymatch(\"$OUTPUT_new\",\"$tempmatchstars\", \"$imagetmp3sd\",toleranc=$toleranceradius, xcolumn=1,ycolumn=2,xrcolum=1,yrcolum=2,separation=5, matchin=\"$matchflag\", inter-,verbo-) " >>login.cl
             echo "geomap(\"$imagetmp3sd\", \"$imagetrans3sd\", transfo=\"$inprefix\", verbos-, xmin=1, xmax=$xNpixel, ymin=1, ymax=$xNpixel,fitgeom=\"general\", functio=\"legendre\",xxorder=$fitorder,xyorder=$fitorder,xxterms=\"half\",yxorder=$fitorder,yyorder=$fitorder,yxterms=\"half\", maxiter=5,reject=3,inter-)" >>login.cl
             echo "geoxytran(\"$OUTPUT_geoxytran1\", \"$OUTPUT_geoxytran3\",\"$imagetrans3sd\", transfo=\"$inprefix\",geometr=\"geometric\",directi=\"backward\",xcolumn=1,ycolumn=2,calctyp=\"double\",min_sig=7)" >>login.cl
@@ -664,7 +675,7 @@ xmatchimgtemp ( )
             #cl < login.cl
             cd $HOME/iraf
             cp -f login.cl.old login.cl
-            cd $DIR_data
+            cd $Dir_redufile
             if test -s $imagetrans3sd
             then
                 echo "for tolerance imagetrans3sd,rms:"
@@ -735,7 +746,7 @@ xmatchimgtemp ( )
                 ls $FITFILE >>xMissmatch.list
                 xreTrack	
                 #	rm -rf $allfile
-                #	./xFwhmCal_noMatch.sh $DIR_data $FITFILE
+                #	./xFwhmCal_noMatch.sh $Dir_redufile $FITFILE
                 #	xtimeCal
                 #	break
             fi
@@ -769,7 +780,7 @@ xmatchimgtemp ( )
         ls $FITFILE >>xMissmatch.list
         xreTrack
         #	rm -rf $allfile
-        #	./xFwhmCal_noMatch.sh $DIR_data $FITFILE
+        #	./xFwhmCal_noMatch.sh $Dir_redufile $FITFILE
         #	xtimeCal
         #       break
 
@@ -785,13 +796,13 @@ xmatchimgtemp ( )
         cp -f login.cl.old login.cl
         echo noao >> login.cl
         echo image >> login.cl
-        echo "cd $DIR_data" >> login.cl
+        echo "cd $Dir_redufile" >> login.cl
         echo "geoxytran(\"$OUTPUT\", \"$OUTPUT_geoxytran3\",\"$imagetrans3sd\", transfo=\"$inprefix\",geometr=\"geometric\",directi=\"backward\",xcolumn=1,ycolumn=2,calctyp=\"double\",min_sig=7)" >>login.cl
         echo logout >> login.cl
         cl < login.cl >xlogfile
         cd $HOME/iraf
         cp -f login.cl.old login.cl
-        cd $DIR_data
+        cd $Dir_redufile
     fi
 
 }
@@ -826,6 +837,80 @@ EOF
 }
 
 
+xMultiAreaFluxCali ( )
+{
+            Nbstar=4 #set 4*4 regions to extract the bright stars to match each other
+            Ng=0
+            xNb=`echo $xNpixel $Nbstar | awk '{print(int($1/$2))}'`
+            yNb=`echo $yNpixel $Nbstar | awk '{print(int($1/$2))}'`
+            for((i=$Ng;i<($Nbstar-$Ng);i++))
+            do
+                for((j=$Ng;j<($Nbstar-$Ng);j++))
+                do
+                    cat refsmall_new | awk '{if( (xnb*i)<$1 && $1<=(xnb*(i+1))  &&    (ynb*j)<$2 && $2<=(ynb*(j+1))) print($1,$2,$3,$4,$5,$6)}' i=$i j=$j xnb=$xNb ynb=$yNb  column -t >>MultiAreaFluxCali_$i$j
+
+gnuplot << EOF
+set term png
+set output "$flux_calibration_png"
+set xlabel "mag in new image"
+set ylabel "mag in temp image"
+set grid
+set key left
+f(x)=a*x+b
+a=1
+fit [13:5][13:5] f(x) 'MultiAreaFluxCali_$i$j' u 6:3 via b  
+plot [14:5][14:5]'MultiAreaFluxCali_$i$j' u 6:3 t 'mag-mag',f(x)
+quit
+EOF
+
+#in the gnuplot, a=1 is aiming to make the correct fit .
+#cp fit.log fit.log.bak
+#when fit above with only b
+aa=1
+bb=`cat fit.log | tail -7 | head -1 | awk '{print($3)}'`
+
+#when fit above, via a,b,  the values of aa and bb are in the following
+#aa=`cat fit.log | tail -9 | head -1 | awk '{print($3)}'`
+#bb=`cat fit.log | tail -8 | head -1 | awk '{print($3)}'`
+echo "the transformation format is f(x)="$aa"*x+"$bb
+
+Xcenter=`echo $xNb $i | awk '{print($1*(1+2*$2)/2)}'`
+Ycenter=`echo $yNb $j | awk '{print($1*(1+2*$2)/2)}'`
+
+echo "f(x)= $aa *x+ $bb  $Xcenter  $Ycenter" >>$imagetransfluxCali
+#instrumental magnitude is x, with the f(x), these magnitude could be transfermed to the standard R2 mag.
+#mv newOTT.cat limitnewOT.cat
+rm -rf fit.log 
+cat $OUTPUT_geoxytran3 | awk '{print($1,$2,$3,$4,$5,$6,aa*$7+bb,$8,$9,$10)}' aa=$aa bb=$bb >>temp
+                done
+            done
+
+ mv temp $OUTPUT_geoxytran3
+
+gnuplot << EOF
+set term png
+set output "$imagetransFluxCaliPnG"
+
+set xlabel "x-axis (pixel)"
+set ylabel "y-axis (pixel)"
+set zlabel "DeltaMag"
+set contour base
+set dgrid3d
+#set view 60,60
+set view 0,0
+#set cntrparam levels 10
+#set cntrparam levels incremental 2, 0.5, 7
+#set cntrparam levels incremental 0, 0.2, 5
+#set cntrparam levels discrete -0.2, -0.5, 0.2, 0.5
+set pm3d at b
+splot [][][] "$imagetransfluxCali" u 5:6:4 with lines
+EOF
+
+
+
+}
+
+
 xfluxcalibration ( )
 {
     echo "flux calibration"
@@ -841,14 +926,14 @@ xfluxcalibration ( )
 #        wc refsmall_new | awk '{print($1)}' >flux_res
 #        cat refsmall_new | awk 'BEGIN{total=0}{total=total+($3-$6)}END{print total }' >>flux_res
 #        cat flux_res | tr '\n' ' ' >flux_res1
-#        S2N=`cat flux_res1 | awk '{print($2/$1)}'` #模板流量比目标图像流量O2A mag
+#        AverDeltaMag=`cat flux_res1 | awk '{print($2/$1)}'` #模板流量比目标图像流量O2A mag
 #    done
 #    rm -rf flux_res flux_res1
-#    echo "S2N="$S2N
-#    echo "S2N="$S2N >>$stringtimeForMonitor
-#    cat $OUTPUT_geoxytran3 | awk '{print($1,$2,$3,$4,$5,$6,$7+S2N,$8,$9,$10)}' S2N=$S2N >temp
+#    echo "AverDeltaMag="$AverDeltaMag
+#    echo "AverDeltaMag="$AverDeltaMag >>$stringtimeForMonitor
+#    cat $OUTPUT_geoxytran3 | awk '{print($1,$2,$3,$4,$5,$6,$7+AverDeltaMag,$8,$9,$10)}' AverDeltaMag=$AverDeltaMag >temp
 #    mv temp $OUTPUT_geoxytran3
-#    echo $S2N $FITFILE >>allxyDiffMag.cat
+#    echo $AverDeltaMag $FITFILE >>allxyDiffMag.cat
 #    cat -n allxyDiffMag.cat >allxyDiffMagCol.cat.plot
 #    sh xplotDiffExtincFromTemp.sh $ID_MountCamara
 #==============================
@@ -880,12 +965,18 @@ echo "f(x)="$aa"*x+"$bb >imagetrans.cat
 #instrumental magnitude is x, with the f(x), these magnitude could be transfermed to the standard R2 mag.
 #mv newOTT.cat limitnewOT.cat
 rm -rf fit.log 
+###=========================
+### The following two lines are replaced by function xMultiAreaFluxCali
+### xlp at 20150804
 cat $OUTPUT_geoxytran3 | awk '{print($1,$2,$3,$4,$5,$6,aa*$7+bb,$8,$9,$10)}' aa=$aa bb=$bb >temp
  mv temp $OUTPUT_geoxytran3
-S2N=`echo $bb`
- echo $S2N $FITFILE >>allxyDiffMag.cat
+###==============================
+AverDeltaMag=`echo $bb`
+ echo $AverDeltaMag $FITFILE >>allxyDiffMag.cat
  cat -n allxyDiffMag.cat >allxyDiffMagCol.cat.plot
  sh xplotDiffExtincFromTemp.sh $ID_MountCamara
+
+#xMultiAreaFluxCali
 
 }
 
@@ -944,7 +1035,6 @@ xlimitmagcal_magbin (  )
 
 xlimitmagcal ( )
 {
-    date
     cat  $OUTPUT_geoxytran3 | awk '{if($1>20 && $2>20 && $1<3020 && $2<3020 && $8<0.2 && $8>0.05)print($1,$2,$7+2.512*log($3*DETECT_TH/$6/sqrt(4)/maglimitSigma)/log(10))}'  DETECT_TH=$DETECT_TH maglimitSigma=$maglimitSigma >newimg_maglimit.cat  # area=4 for aperature phot
     if test -r newimg_maglimit_result.cat
     then
@@ -993,8 +1083,9 @@ xcrossmatchwithR1Merr1 ( )
     #        cp $crossoutput_xy newoutput_chb.dat
 #    cat $crossoutput_xy | awk '{if($1>ejmin && $1<ejmax && $2>ejmin && $2<ejmax && $13==2) print($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)}' ejmin=$ejmin ejmax=$ejmax | grep -v "99.000" >$crossoutput_mag   # new variables
 #    cat $crossoutput_xy | awk '{if($1>ejmin && $1<ejmax && $2>ejmin && $2<ejmax && $13==1) print($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)}' ejmin=$ejmin ejmax=$ejmax | grep -v "99.000" >temp
-    cat $crossoutput_xy | awk '{if($1>ejmin && $1<ejmax && $2>ejmin && $2<ejmax && $9<1 && $13==2) print($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)}' ejmin=$ejmin ejmax=$ejmax | grep -v "99.000" >$crossoutput_mag   # new variables  $9 is the ellipticity if $9==1 it would be hot pixel
-    cat $crossoutput_xy | awk '{if($1>ejmin && $1<ejmax && $2>ejmin && $2<ejmax && $9<1 &&$13==1) print($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)}' ejmin=$ejmin ejmax=$ejmax | grep -v "99.000" >temp  
+    cat $crossoutput_xy | awk '{if($1>ejmin && $1<ejmax && $2>ejmin && $2<ejmax && $8<0.3 &&$9<1.0 && $13==2) print($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)}' ejmin=$ejmin ejmax=$ejmax | grep -v "99.000" >$crossoutput_mag   # new variables  $9 is the ellipticity if $9==1 it would be hot pixel
+    cat $crossoutput_xy | awk '{if($1>ejmin && $1<ejmax && $2>ejmin && $2<ejmax && $8<0.3 && $9<0.6 && $13==1) print($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)}' ejmin=$ejmin ejmax=$ejmax | grep -v "99.000" >temp  
+# $9<0.4 is to filter those moving object which is overlap with some stars
 
     mv temp $crossoutput_xy  #new ot candidates 
     #        NumOT=`wc $crossoutput_xy | awk '{print($1)}'`
@@ -1040,14 +1131,14 @@ xupdatetemp ( )
     #                echo digiphot >> login.cl
     #                echo image >> login.cl
     #                echo imcoords >>login.cl
-    #                echo "cd $DIR_data" >> login.cl
+    #                echo "cd $Dir_redufile" >> login.cl
     #               # echo "imarith(\"$FITFILE\",\"-\",\"$bg\",\"$FITFILE_subbg\")" >>login.cl
     #                echo "display(image=\"$FITFILE_subbg\",frame=1)" >>login.cl #display newimage in frame 1
     #                echo logout >> login.cl
     #                cl < login.cl>xlogfile
     #                cd $HOME/iraf
     #                cp -f login.cl.old login.cl
-    cd $DIR_data
+    cd $Dir_redufile
     #                cp $FITFILE  $trimsubimage_dir  #for the trim subimage continously      
 
     #                if test -r noupdate.flag
@@ -1122,7 +1213,7 @@ xcctranOT2image ( )
         echo digiphot >> login.cl
         echo image >> login.cl
         echo imcoords >>login.cl
-        echo "cd $DIR_data" >> login.cl
+        echo "cd $Dir_redufile" >> login.cl
         #OT candidates
         echo "cctran(input=\"$crossoutput_xy\",output=\"$crossoutput_sky\", database=\"$Accfile\",solutions=\"first\", geometry=\"geometric\",lngunits=\"degrees\",latunits=\"degrees\",projection=\"tan\",xcolumn=1,ycolumn=2,min_sigdigits=7,forward+,lngform=\"%12.7f\",latform=\"%12.7f\" ) " >>login.cl
         echo "geoxytran(\"$crossoutput_xy\", \"$newimageOTxyThird\",\"$imagetrans3sd\", transfo=\"$inprefix\",geometr=\"geometric\",directi=\"forward\",xcolumn=1,ycolumn=2,calctyp=\"double\",min_sig=7)" >>login.cl
@@ -1139,7 +1230,7 @@ xcctranOT2image ( )
         cl < login.cl >xlogfile
         cd $HOME/iraf
         cp -f login.cl.old login.cl
-        cd $DIR_data
+        cd $Dir_redufile
         rm -rf magtemp
     else
         cd $HOME/iraf
@@ -1148,7 +1239,7 @@ xcctranOT2image ( )
         echo digiphot >> login.cl
         echo image >> login.cl
         echo imcoords >>login.cl
-        echo "cd $DIR_data" >> login.cl
+        echo "cd $Dir_redufile" >> login.cl
         #OT candidates
         echo "cctran(input=\"$crossoutput_xy\",output=\"$crossoutput_sky\", database=\"$Accfile\",solutions=\"first\", geometry=\"geometric\",lngunits=\"degrees\",latunits=\"degrees\",projection=\"tan\",xcolumn=1,ycolumn=2,min_sigdigits=7,forward+,lngform=\"%12.7f\",latform=\"%12.7f\" ) " >>login.cl
         echo "geoxytran(\"$crossoutput_xy\", \"$newimageOTxyFis\",\"$imagetrans3sd\", transfo=\"$inprefix\",geometr=\"geometric\",directi=\"forward\",xcolumn=1,ycolumn=2,calctyp=\"double\",min_sig=7)" >>login.cl
@@ -1163,7 +1254,7 @@ xcctranOT2image ( )
         cl < login.cl >xlogfile
         cd $HOME/iraf
         cp -f login.cl.old login.cl
-        cd $DIR_data
+        cd $Dir_redufile
     fi
 
 
@@ -1172,8 +1263,12 @@ xcctranOT2image ( )
     #deleted by xlp at 20150312
     cat $newimageOTxyFis | awk '{print($1+xshift0,$2+yshift0,$3,$4,$5,$6,$7,$8,$9,$10)}' xshift0=$xshift0 yshift0=$yshift0 >temp
     mv temp $newimageOTxyFis
+
     cat $tempstandmagstarFis | awk '{print($1+xshift0,$2+yshift0,$3)}' xshift0=$xshift0 yshift0=$yshift0 >temp
     mv temp $tempstandmagstarFis
+
+    cat $newimageOTxyFis_mag | awk '{print($1+xshift0,$2+yshift0,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)}' xshift0=$xshift0 yshift0=$yshift0 >temp
+    mv temp $newimageOTxyFis_mag
 
 }
 xcombineOTInformation ( )
@@ -1325,13 +1420,13 @@ xfilterPSF ( )
        echo image >> login.cl
        echo digiphot >> login.cl
        echo daophot >>login.cl
-       echo "cd $DIR_data" >> login.cl
+       echo "cd $Dir_redufile" >> login.cl
        echo "daoedit(\"$FITFILE\", icommand=\"psf.dat\")"  >> login.cl
        echo logout >> login.cl
        cl < login.cl  >OUTPUT_PSF
-       mv OUTPUT_PSF $DIR_data
+       mv OUTPUT_PSF $Dir_redufile
        cp -f login.cl.old login.cl
-       cd $DIR_data
+       cd $Dir_redufile
        cat OUTPUT_PSF | grep "ERROR" >errormsg
        if test ! -s errormsg
        then 
@@ -1367,13 +1462,13 @@ xcheckpsf_Variable (  )
        echo image >> login.cl
        echo digiphot >> login.cl
        echo daophot >>login.cl
-       echo "cd $DIR_data" >> login.cl
+       echo "cd $Dir_redufile" >> login.cl
        echo "daoedit(\"$FITFILE\", icommand=\"psf.dat\")"  >> login.cl
        echo logout >> login.cl
        cl < login.cl  >OUTPUT_PSF
-       mv OUTPUT_PSF $DIR_data
+       mv OUTPUT_PSF $Dir_redufile
        cp -f login.cl.old login.cl
-       cd $DIR_data
+       cd $Dir_redufile
        cat OUTPUT_PSF | grep "ERROR" >errormsg
        if test ! -s errormsg
        then 
@@ -1443,6 +1538,8 @@ xGetKeywords ( )
     xxdateobs=`echo $dateobs | sed 's/-//g'| cut -c3-8`
     ccdtypeID=`echo $FITFILE | cut -c4-5 | awk '{print("M"$1)}'`
     ID_ccdtype=`gethead "CCDTYPE" $FITFILE`
+    exptime=`gethead $FITFILE "EXPTIME"`
+    DirData=`gethead $FITFILE "DirData"`
 }
 
  xUploadImgStatus (  )
@@ -1461,7 +1558,7 @@ xGetKeywords ( )
     echo "upload the image status file to the server" >>$stringtimeForMonitor
     sh xUploadImgStatus.sh
     wait
- 
+    echo $FITFILE `date` >>UploadParameterfile_forXuyangMonitor 
 }
 
 
@@ -1529,6 +1626,7 @@ xOnlyUploadOTAndmag ( )
             curprocnumber=`echo $FITFILE | cut -c23-26`
             otlist=$crossoutput_sky
             varilist=$crossoutput_sky_mag
+            imagetrans=$imagetransfluxCali
             imgstatus
             starlist=
             origimage=
@@ -1539,7 +1637,7 @@ xOnlyUploadOTAndmag ( )
             #echo $dateobs $xxdateobs
             #echo "curl  http://190.168.1.25/uploadAction.action -F dpmName=$ccdtype  -F currentDirectory=$xxdateobs -F configFile=@$configfile -F fileUpload=@$crossoutput_sky"
 
-             echo "curl  http://190.168.1.25/uploadAction.action -F dpmName=$ccdtypeID  -F currentDirectory=$xxdateobs -F configFile=@$configfile -F fileUpload=@$crossoutput_sky -F fileUpload=@$crossoutput_sky_mag" >xupload1ot.sh
+             echo "curl  http://190.168.1.25/uploadAction.action -F dpmName=$ccdtypeID  -F currentDirectory=$xxdateobs -F configFile=@$configfile -F fileUpload=@$crossoutput_sky -F fileUpload=@$crossoutput_sky_mag -F fileUpload=@$imagetransfluxCali" >xupload1ot.sh
 
              echo "upload the OT file to the server" >>$stringtimeForMonitor
              sh xupload1ot.sh
@@ -1619,7 +1717,7 @@ xdisplayOTandnewImg ( )  #not used any more
     echo digiphot >> login.cl
     echo image >> login.cl
     echo imcoords >>login.cl
-    echo "cd $DIR_data" >> login.cl
+    echo "cd $Dir_redufile" >> login.cl
     echo "display(image=\"$FITFILE_subbg\",frame=1)" >>login.cl #display newimage in frame 1
     echo "display(image=\"$tempsubbgfile\",frame=2)" >>login.cl #display temp file in frame 2
     echo "tvmark(frame=1,coords=\"$newimageOTxyFis\",mark=\"circle\",radii=100,color=204,label+)" >>login.cl # tvmark new OT in frame 2
@@ -1631,7 +1729,7 @@ xdisplayOTandnewImg ( )  #not used any more
     cl < login.cl>xlogfile
     cd $HOME/iraf
     cp -f login.cl.old login.cl
-    cd $DIR_data
+    cd $Dir_redufile
     date
 }
 
@@ -1738,7 +1836,7 @@ xFWHMCalandFocus ( )
     if test -s $tempstandmagstarFis
     then
         echo "=======Have $tempstandmagstarFis==========="
-        sh xFwhmCal_standmag.sh $DIR_data $FITFILE $tempstandmagstarFis $OUTPUT_fwhm & 
+        sh xFwhmCal_standmag.sh $Dir_redufile $FITFILE $tempstandmagstarFis $OUTPUT_fwhm & 
     else
         echo "=========NO $tempstandmagstarFis======="
     fi
@@ -1844,6 +1942,7 @@ xSentFwhmAndTrack (  )
 xcheckMatchResult (   )
 {
     NumOT=`wc -l $crossoutput_xy | awk '{print($1)}'`
+    Num_Variable=`cat $crossoutput_sky_mag | wc -l | awk '{print($1)}'`
     NumOT_center=`cat $crossoutput_xy | awk '{if($1>500 && $1<2500 && $2>500 && $2<2500) print($1,$2)}' | wc -l | awk '{print($1)}'`
     echo "NumOT_center in crossoutput_xy is: " $NumOT_center
     echo "N1OTC_center  and N1OTC in all FoV are " $NumOT_center " and " $NumOT >>list_matchmatss
@@ -1851,14 +1950,14 @@ xcheckMatchResult (   )
     if test -r noupdate.flag
     then
         echo "Have noupdate.flag"
-        ./xFwhmCal_noMatch.sh $DIR_data $FITFILE 
+        ./xFwhmCal_noMatch.sh $Dir_redufile $FITFILE 
         wait
         #xMakefalseValueFormonitor_LimitmagDiffmag
         xSentFwhmAndTrack
         xupdatetemp   #to update the tempfile
-    elif [ $NumOT_center -gt 30 ]
+    elif [ $NumOT_center -gt $NumOT_center_max ]
     then
-        ./xFwhmCal_noMatch.sh $DIR_data $FITFILE  
+        ./xFwhmCal_noMatch.sh $Dir_redufile $FITFILE  
         wait
         echo "class 1 OT is: " $NumOT_center
         echo "no noupdate.flag, do the next image"
@@ -1889,7 +1988,7 @@ xcheckMatchResult (   )
         fi
 #        if [ $NumOT == 0 ]
 #        then
-#            ./xFwhmCal_noMatch.sh $DIR_data $FITFILE 
+#            ./xFwhmCal_noMatch.sh $Dir_redufile $FITFILE 
 #            wait
 #            xSentFwhmAndTrack
 #            xtimeCal
@@ -1950,10 +2049,10 @@ do
     #xCheckshiftResult  
    echo "xMountTrack " `date` >>$stringtimeForMonitor 
     xMountTrack & 
-   echo "xcheckMatchResult " `date` >>$stringtimeForMonitor 
-    xcheckMatchResult
    echo "xcctranOT2image " `date` >>$stringtimeForMonitor 
     xcctranOT2image
+   echo "xcheckMatchResult " `date` >>$stringtimeForMonitor 
+    xcheckMatchResult
    echo "xFWHMCalandFocus " `date` >>$stringtimeForMonitor 
     xFWHMCalandFocus
    echo "xcombineOTInformation " `date` >>$stringtimeForMonitor 
@@ -1961,8 +2060,8 @@ do
    # xfilterDarkBadpixel
    echo "xfilterBadColumnPixel " `date` >>$stringtimeForMonitor 
    xfilterBadColumnPixel
-   echo "xfilterBadSinglePixel " `date` >>$stringtimeForMonitor 
-   xfilterBadSinglePixel
+#   echo "xfilterBadSinglePixel " `date` >>$stringtimeForMonitor 
+#   xfilterBadSinglePixel
     #xfilterBrightStars
    echo "xfilterPSF " `date` >>$stringtimeForMonitor 
     xfilterPSF

@@ -39,8 +39,8 @@ DETECT_MINAREA   3              # minimum number of pixels above threshold
 #DETECT MAXAREA   50             # maximum number of pixels above threshold
 THRESH_TYPE 	 RELATIVE       # Relative to background RMS
 				# In ADU’s (set THRESH TYPE ABSOLUTE) e.g. DETECT THRESH 1.2
-DETECT_THRESH    1            	# <sigmas> or <threshold>,<ZP> in mag.arcsec-2
-ANALYSIS_THRESH  1          	# <sigmas> or <threshold>,<ZP> in mag.arcsec-2,
+DETECT_THRESH    20            	# <sigmas> or <threshold>,<ZP> in mag.arcsec-2
+ANALYSIS_THRESH  20          	# <sigmas> or <threshold>,<ZP> in mag.arcsec-2,
 				#is just the threshold for CLASS STAR and FWHM
  
 FILTER           Y              # apply filter for detection (Y or N)?
@@ -50,10 +50,10 @@ FILTER           Y              # apply filter for detection (Y or N)?
 FILTER_NAME	gauss_1.5_3x3.conv
  
 DEBLEND_NTHRESH  32            # Number of deblending sub-thresholds
-DEBLEND_MINCONT  0.000001          	# Minimum contrast parameter for deblending,图像目标中，最暗目标流量与最亮目标流量的最小比。对亮星周围暗星的探测很有用。
+DEBLEND_MINCONT  0.01          	# Minimum contrast parameter for deblending,图像目标中，最暗目标流量与最亮目标流量的最小比。对亮星周围暗星的探测很有用。
 
 CLEAN            Y              # Clean spurious detections? (Y or N)?
-CLEAN_PARAM      10            # Cleaning efficiency，取值范围是0.1-10，选择合适的值可以减少假信号的比例。
+CLEAN_PARAM      0.1            # Cleaning efficiency，取值范围是0.1-10，选择合适的值可以减少假信号的比例。
  
 MASK_TYPE        CORRECT        # type of detection MASKing: can be one of
                                 # NONE, BLANK or CORRECT
@@ -100,11 +100,11 @@ STARNNW_NAME     default.nnw    # Neural-Network_Weight table filename
  
 BACK_SIZE        64             # Background mesh: <size> or <width>,<height>,build a sky model,
 				# 不能太小，星的零度影响比较严重，也不能太大，细小结构有可能看不到。
-BACK_FILTERSIZE  4            # Background filter: <size> or <width>,<height>, smooth the image to reduce noise on small scale
+BACK_FILTERSIZE  2             # Background filter: <size> or <width>,<height>, smooth the image to reduce noise on small scale
 #BACK_TYPE 	 AUTO           # What background is subtracted from the images: 
 				# The internal interpolated background-map. 
 				# In the manual it says “INTERNAL” here but the keyword is AUTO. 
-BACKPHOTO_TYPE   LOCAL          # can be GLOBAL or LOCAL
+BACKPHOTO_TYPE   GLOBAL          # can be GLOBAL or LOCAL
  
 #------------------------------ Check Image ----------------------------------
 CHECKIMAGE_TYPE  BACKGROUND

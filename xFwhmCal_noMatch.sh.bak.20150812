@@ -66,8 +66,8 @@ ejmax=3030
 echo $DIR_data $FITFILE $OUTPUT_fwhm
 OUTPUT_ini=`echo $FITFILE | sed 's/\.fit/.fit.sexini/'`
 OUTPUT_bg=`echo $FITFILE | sed 's/\.fit/.bg.fit/'`
-#sex $FITFILE  -c  xmatchdaofind.sex -DETECT_THRESH 3.0 -ANALYSIS_THRESH 3.0 -CATALOG_NAME $OUTPUT_ini -CHECKIMAGE_TYPE BACKGROUND -CHECKIMAGE_NAME $OUTPUT_bg
-#rm -rf $OUTPUT_bg
+sex $FITFILE  -c  xmatchdaofind.sex -DETECT_THRESH 3.0 -ANALYSIS_THRESH 3.0 -CATALOG_NAME $OUTPUT_ini -CHECKIMAGE_TYPE BACKGROUND -CHECKIMAGE_NAME $OUTPUT_bg
+rm -rf $OUTPUT_bg
 
 NStar_ini=`cat $OUTPUT_ini | wc -l | awk '{print($1)}'`
 rm -rf newbgbrightres.cat

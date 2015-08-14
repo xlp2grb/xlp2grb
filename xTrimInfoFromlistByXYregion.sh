@@ -1,5 +1,5 @@
 #!/bin/bash
-echo " xTrimInfoFromlistByXYregion.sh listname xmin ymax ymin ymax"
+echo " xTrimInfoFromlistByXYregion.sh listname xmin xmax ymin ymax"
 list=$1
 xmin=$2
 xmax=$3

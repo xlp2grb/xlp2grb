@@ -36,7 +36,8 @@ xget2otlistfromxy ( )
                 date >>$fitscutpngmonitor
                 cat $SecondOTlist $fitscutpngmonitor
                 echo `pwd` >>$fitscutpngmonitor
-                ./xtrim_xyf_tempfile.sh  $SecondOTlist 
+               # ./xtrim_xyf_tempfile.sh  $SecondOTlist 
+                ./xtrim_xyf_tempfile_2.sh $SecondOTlist
 		wait
 		sleep 5
         else

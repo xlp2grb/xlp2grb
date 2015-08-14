@@ -26,8 +26,6 @@ Dir_IPforMonitorAndTemp=/home/gwac/webForFwhm
 ObjInitialImage=1000  #The critical number for object number in the initial image 
 BgBrightInitialImage=100  #The critical number for background brightness in the initial image
 Nstar_skycali=5000  #The critical number of objects for astronomy.
-NumskyC_max=10 #The critical image number for waiting for the successful astronomy for about 2 minites.
-#it could be changed into 40 for 10 minites
 echo $Dir_rawdata
 echo $Dir_temp
 echo $Dir_redufile
@@ -148,31 +146,28 @@ echo "---xcheckcombine---"
 date
 ls $fitfile >>newcomlist
 line_newcomlist=`cat newcomlist | wc -l`
-if [ $line_newcomlist -lt 10 ]
+if [ $line_newcomlist -lt 5 ]
 then
-    echo "the number of new image is" $line_newcomlist
+        echo "the number of new image is" $line_newcomlist
 	touch notemp.flag
-    xProcessMonitorStatTempMakingCollectionImage
 else
-#	echo `date` "---------to combine the 10 images-------"
-        comref=`cat newcomlist | tail -10  | head -1`
+#	echo `date` "---------to combine the 5 images-------"
+        comref=`cat newcomlist | tail -5  | head -1`
         echo $comref
         comimage=`echo $comref | sed 's/\.fit/com.fit/'`
         MonitorParameterslog=`echo $comimage | sed 's/\.fit/.fit.monitorParaLog/'`
-	echo "combine last 10 images " `date` >>$stringtimeForMonitor
-    sh xcom_withshift.sh newcomlist $comimage
-	#./xcom_withoutshift5images.sh newcomlist $comimage 
-	#sh xcom_withshift5images.sh newcomlist $comimage	
+	echo "combine last 5 images " `date` >>$stringtimeForMonitor
+	./xcom_withoutshift5images.sh newcomlist $comimage 
 	wait
 	#rm -rf fwhm_lastdata
-	sh xFwhmCal_noMatch_com.sh $Dir_redufile $comimage 
+	sh xFwhmCal_noMatch.sh $Dir_redufile $comimage 
 	wait
     xReadObjAndBgbrightAndEllipFromFile
     #xsentFwhmToMonitor &  #modified by xlp at 20150130
 	if test ! -s fwhm_lastdata
 	then
-		echo "No ouptut for xFwhmCal_noMatch_com.sh"
-		echo "No ouptut for xFwhmCal_noMatch_com.sh "  `date` >>$stringtimeForMonitor
+		echo "No ouptut for xFwhmCal_noMatch.sh"
+		echo "No ouptut for xFwhmCal_noMatch.sh "  `date` >>$stringtimeForMonitor
 	else
 		fwhm_comimage=`cat fwhm_lastdata | awk '{print($5)}'`
 		NstarForfwhm=`cat fwhm_lastdata | awk '{print($4)}'`
@@ -259,7 +254,7 @@ xCheckFirstMaking ( )
             echo "first have xatcopy_remote.flag"
             #sleep 180 #modified by xlp at 20140826 
 	ls $fitfile >>xMissmatch.list
-	./xFwhmCal_noMatch_com.sh $Dir_redufile $fitfile
+	./xFwhmCal_noMatch.sh $Dir_redufile $fitfile
 	wait
     xProcessMonitorStatTempMakingWaiting
     #xsentFwhmToMonitor &
@@ -402,21 +397,12 @@ xProcessMonitorStatSkyCal ( )
     echo "====xProcessMonitorStatSkyCal===="
     echo "This case shows the SkyCal stat"
     TimeProcessEnd=`date -u +%Y%m%d%H%M%S`
+  #  echo "DateObsUT=$dateobs TimeObsUT=$timeobs Obj_Num=$Nstar_ini bgbright=$bgbrightness Fwhm=$fwhmnow S2N=-99 AverLimit=-99 Extinc=-99 xshift=-99 yshift=-99 xrms=-99 yrms=-99 OC1=-99 VC1=-99 Image=$fitfile RA=$ra_mount DEC=$dec_mount State=SkyCal TimeProcess=-99 ellipticity=$avellip tempset=$tempset tempact=$tempact"  | tr ' ' '\n' 
     echo "DateObsUT=$dateobs TimeObsUT=$timeobs Image=$fitfile DirData=$DirData ra_mount=$ra_mount dec_mount=$dec_mount exptime=$exptime ra_imgCenter=-99 dec_imgCenter=-99 tempset=$tempset tempact=$tempact Fwhm=$fwhmnow ellipticity=$avellip xshift=-99 yshift=-99 xrms=-99 yrms=-99 OC1=-99 VC1=-99 Obj_Num=$Nstar_ini bgbright=$bgbrightness AverDeltaMag=-99 AverLimit=-99 Extinc=-99 State=SkyCal TimeProcess=-99 TimeProcessEnd=$TimeProcessEnd" | tr ' ' '\n' >$MonitorParameterslog
+#    echo "DateObsUT=$dateobs TimeObsUT=$timeobs Obj_Num=$Nstar_ini bgbright=$bgbrightness Fwhm=$fwhmnow S2N=-99 AverLimit=-99 Extinc=-99 xshift=-99 yshift=-99 xrms=-99 yrms=-99 OC1=-99 VC1=-99 Image=$fitfile RA=$ra_mount DEC=$dec_mount State=SkyCal TimeProcess=-99 ellipticity=$avellip tempset=$tempset tempact=$tempact" | tr ' ' '\n' >$MonitorParameterslog
     xUploadImgStatus
     wait
     #curl $UploadParameterfile  -F fileUpload=@$MonitorParameterslog
-  }
-
-
-xProcessMonitorStatTempMakingCollectionImage ( )                                                                           
-  {
-    echo "This case shows Temp making images are not enough"
-    TimeProcessEnd=`date -u +%Y%m%d%H%M%S`
-    echo "DateObsUT=$dateobs TimeObsUT=$timeobs Image=$fitfile DirData=$DirData ra_mount=$dec_mount dec_mount=$dec_mount exptime=$exptime ra_imgCenter=-99 dec_imgCenter=-99 tempset=$tempset tempact=$tempact Fwhm=-99 ellipticity=-99 xshift=-99 yshift=-99 xrms=-99 yrms=-99 OC1=-99 VC1=-99 Obj_Num=-99 bgbright=-99 AverDeltaMag=-99 AverLimit=-99 Extinc=-99 State=TempMakingCollectionImg TimeProcess=-99 TimeProcessEnd=$TimeProcessEnd" | tr ' ' '\n' >$MonitorParameterslog
-    xUploadImgStatus
-    wait
-    #  curl $UploadParameterfile  -F fileUpload=@$MonitorParameterslog
   }
 
 xProcessMonitorStatTempMaking ( )                                                                           
@@ -424,6 +410,7 @@ xProcessMonitorStatTempMaking ( )
     echo "This case shows Temp making"
     TimeProcessEnd=`date -u +%Y%m%d%H%M%S`
     echo "DateObsUT=$dateobs TimeObsUT=$timeobs Image=$comimage DirData=$DirData ra_mount=$dec_mount dec_mount=$dec_mount exptime=$exptime ra_imgCenter=-99 dec_imgCenter=-99 tempset=$tempset tempact=$tempact Fwhm=$fwhm_comimage ellipticity=$avellip xshift=-99 yshift=-99 xrms=-99 yrms=-99 OC1=-99 VC1=-99 Obj_Num=$Nstar_ini bgbright=$bgbrightness AverDeltaMag=-99 AverLimit=-99 Extinc=-99 State=TempMaking TimeProcess=-99 TimeProcessEnd=$TimeProcessEnd" | tr ' ' '\n' >$MonitorParameterslog
+#    echo "DateObsUT=$dateobs TimeObsUT=$timeobs Obj_Num=$Nstar_ini bgbright=$bgbrightness Fwhm=$fwhm_comimage S2N=-99 AverLimit=-99 Extinc=-99 xshift=-99 yshift=-99 xrms=-99 yrms=-99 OC1=-99 VC1=-99 Image=$comimage RA=$ra_mount DEC=$dec_mount State=TempMaking TimeProcess=-99 ellipticity=$avellip tempset=$tempset tempact=$tempact" | tr ' ' '\n' >$MonitorParameterslog
     xUploadImgStatus
     wait
     #  curl $UploadParameterfile  -F fileUpload=@$MonitorParameterslog
@@ -489,7 +476,7 @@ xcheckfirstimagequality (  )
         echo "this sync image is good" >>$stringtimeForMonitor
 	    cp newimageCoord newimageCoord.list
         xProcessMonitorStatSkyCal
-        #xautoSkyCoordCali
+        xautoSkyCoordCali
     fi      
 }
 
@@ -604,7 +591,7 @@ then
              ls $fitfile >>xmkSkyCoordCalibration_Waiting.lst
              Num_waiting_skyC=`cat xmkSkyCoordCalibration_Waiting.lst | wc -l | awk '{print($1)}'`
              echo "The number for the waiting skyC is: "$Num_waiting_skyC
-             if [ $Num_waiting_skyC -gt $NumskyC_max ]  #waiting for 10 minites
+             if [ $Num_waiting_skyC -gt 40 ]  #waiting for 10 minites
              then
                  rm -rf xmkSkyCoordCalibration.flag xmkSkyCoordCalibration_Waiting.lst
                  rm -rf xmkSkyCoordCalibration.flag xmkSkyCoordCalibration_Waiting.lst >>$stringtimeForMonitor
@@ -788,7 +775,7 @@ xGetKeywords (  )
 
 xUploadImgStatus (  )
 {
-	#echo $xxdateobs  $ccdtypeID $MonitorParameterslog $configfile
+	echo $xxdateobs  $ccdtypeID $MonitorParameterslog $configfile
     echo "date=$xxdateobs 
     dpmname=$ccdtypeID
     dfinfo=`df -Th /data | tail -1`
@@ -799,12 +786,11 @@ xUploadImgStatus (  )
     starlist= 
     origimage=
     cutimages= " >$configfile
-    #echo "curl  http://190.168.1.25/uploadAction.action -F dpmName=$ccdtypeID  -F currentDirectory=$xxdateobs -F configFile=@$configfile -F fileUpload=@$MonitorParameterslog" 
+    echo "curl  http://190.168.1.25/uploadAction.action -F dpmName=$ccdtypeID  -F currentDirectory=$xxdateobs -F configFile=@$configfile -F fileUpload=@$MonitorParameterslog" 
     echo "curl  http://190.168.1.25/uploadAction.action -F dpmName=$ccdtypeID  -F currentDirectory=$xxdateobs -F configFile=@$configfile -F fileUpload=@$MonitorParameterslog" >xUploadImgStatus.sh
     echo "upload the image status file to the server" >>$stringtimeForMonitor
     sh xUploadImgStatus.sh
     wait
-    echo $fitfile `date` >>UploadParameterfile_forXuyangMonitor
 }
 
 
@@ -955,7 +941,6 @@ do
         mkdir fitsbakfile
 
     fi
-    rm -rf Newimage.fits
 
 #	if test ! -r M*.fits
 #	then

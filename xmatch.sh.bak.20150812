@@ -910,8 +910,7 @@ set pm3d at b
 splot [][][] "$imagetransfluxCali" u 5:6:4 with lines
 EOF
 
-    
-# curl $UploadParameterfile  -F fileUpload=@$diffmagresjpg
+
 
 }
 
@@ -973,15 +972,15 @@ rm -rf fit.log
 ###=========================
 ### The following two lines are replaced by function xMultiAreaFluxCali
 ### xlp at 20150804
-#cat $OUTPUT_geoxytran3 | awk '{print($1,$2,$3,$4,$5,$6,aa*$7+bb,$8,$9,$10)}' aa=$aa bb=$bb >temp
-# mv temp $OUTPUT_geoxytran3
+cat $OUTPUT_geoxytran3 | awk '{print($1,$2,$3,$4,$5,$6,aa*$7+bb,$8,$9,$10)}' aa=$aa bb=$bb >temp
+ mv temp $OUTPUT_geoxytran3
 ###==============================
 AverDeltaMag=`echo $bb`
  echo $AverDeltaMag $FITFILE >>allxyDiffMag.cat
  cat -n allxyDiffMag.cat >allxyDiffMagCol.cat.plot
  sh xplotDiffExtincFromTemp.sh $ID_MountCamara
 
-xMultiAreaFluxCali
+#xMultiAreaFluxCali
 
 }
 
