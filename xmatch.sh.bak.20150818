@@ -50,7 +50,7 @@ ejmin=300  #3056-(20sqrdegree*3600/29.8arcsec)/2 = 320
 #The difference of 20 pixel makes that two ccds on one mount could be overlap even though the angle of 0.76 degrees  between two CCDs  
 ejmax=`echo $CCDsize | awk '{print($1-ejmin)}' ejmin=$ejmin` 
 crossRedius=1.5
-diffmag=0.5
+diffmag=2.0
 crossRedius_inner=1.5
 crossRedius_outer=1.8
 PSF_Critical_min=1.15
@@ -1077,10 +1077,13 @@ xcrossmatchwithR1Merr1 ( )
     #======================================================
     echo `date` "crossmatch"  # cross match between new image and temp in XY spece.
     echo $crossRedius $diffmag
-    ./xnewCrossMatchF $crossRedius $diffmag $OUTPUT_geoxytran3 $AlltemplatetableForVariable $crossoutput_xy
-    cat $crossoutput_xy | awk '{if($1>ejmin && $1<ejmax && $2>ejmin && $2<ejmax && $8<0.3 &&$9<1.0 && $13==2) print($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)}' ejmin=$ejmin ejmax=$ejmax | grep -v "99.000" >$crossoutput_mag   # new variables  $9 is the ellipticity if $9==1 it would be hot pixel
-    rm $crossoutput_xy
     ./xnewCrossMatchF $crossRedius $diffmag $OUTPUT_geoxytran3 $Alltemplatetable $crossoutput_xy
+
+    #select out those at the edge of the image.
+    #        cp $crossoutput_xy newoutput_chb.dat
+#    cat $crossoutput_xy | awk '{if($1>ejmin && $1<ejmax && $2>ejmin && $2<ejmax && $13==2) print($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)}' ejmin=$ejmin ejmax=$ejmax | grep -v "99.000" >$crossoutput_mag   # new variables
+#    cat $crossoutput_xy | awk '{if($1>ejmin && $1<ejmax && $2>ejmin && $2<ejmax && $13==1) print($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)}' ejmin=$ejmin ejmax=$ejmax | grep -v "99.000" >temp
+    cat $crossoutput_xy | awk '{if($1>ejmin && $1<ejmax && $2>ejmin && $2<ejmax && $8<0.3 &&$9<1.0 && $13==2) print($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)}' ejmin=$ejmin ejmax=$ejmax | grep -v "99.000" >$crossoutput_mag   # new variables  $9 is the ellipticity if $9==1 it would be hot pixel
     cat $crossoutput_xy | awk '{if($1>ejmin && $1<ejmax && $2>ejmin && $2<ejmax && $8<0.3 && $9<0.6 && $13==1) print($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)}' ejmin=$ejmin ejmax=$ejmax | grep -v "99.000" >temp  
 # $9<0.4 is to filter those moving object which is overlap with some stars
 
